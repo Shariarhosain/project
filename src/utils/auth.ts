@@ -5,7 +5,7 @@ export const generateGuestToken = (): string => {
   return uuidv4();
 };
 
-export const generateJWT = (payload: object): string => {
+export const generateJWT = (payload: { id: string; email: string; name: string; role: string }): string => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     throw new Error('JWT_SECRET is not defined');
@@ -25,6 +25,13 @@ export const verifyJWT = (token: string): any => {
 };
 
 export const extractGuestToken = (authHeader?: string): string | null => {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  return authHeader.substring(7);
+};
+
+export const extractUserToken = (authHeader?: string): string | null => {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }

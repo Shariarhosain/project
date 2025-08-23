@@ -1,16 +1,27 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 import { createError } from '../middleware/errorHandler';
+import { generateJWT } from '../utils/auth';
 
 const prisma = new PrismaClient();
 
 interface CreateUserData {
   email: string;
+  password: string;
+  name: string;
+  role?: 'USER' | 'ADMIN';
+}
+
+interface RegisterUserData {
+  email: string;
+  password: string;
   name: string;
 }
 
 interface UpdateUserData {
   email?: string;
   name?: string;
+  role?: 'USER' | 'ADMIN';
 }
 
 interface GetUsersParams {
@@ -40,6 +51,14 @@ export class UserService {
           skip,
           take: limit,
           orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            createdAt: true,
+            updatedAt: true,
+          },
         }),
         prisma.user.count({ where }),
       ]);
@@ -71,7 +90,9 @@ export class UserService {
         throw createError('User not found', 404);
       }
 
-      return user;
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      return userWithoutPassword;
     } catch (error: any) {
       if (error.statusCode) {
         throw error;
@@ -92,12 +113,22 @@ export class UserService {
         throw createError('User with this email already exists', 409);
       }
 
+      // Hash password
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(data.password, saltRounds);
+
       // Use simple Prisma create - no unique constraint means no transactions needed
       const user = await prisma.user.create({
-        data,
+        data: {
+          ...data,
+          password: hashedPassword,
+        },
       });
 
-      return user;
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+
+      return userWithoutPassword;
     } catch (error: any) {
       if (error.statusCode) {
         throw error;
@@ -138,7 +169,9 @@ export class UserService {
         data,
       });
 
-      return user;
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      return userWithoutPassword;
     } catch (error: any) {
       if (error.statusCode) {
         throw error;
@@ -171,6 +204,120 @@ export class UserService {
       }
       console.error('Error deleting user:', error);
       throw createError('Failed to delete user', 500);
+    }
+  }
+
+  async login(email: string, password: string) {
+    try {
+      // Find user by email
+      const user = await prisma.user.findFirst({
+        where: { email },
+      });
+
+      if (!user) {
+        throw createError('Invalid email or password', 401);
+      }
+
+      // Check password
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        throw createError('Invalid email or password', 401);
+      }
+
+      // Generate JWT token
+      const token = generateJWT({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role.toLowerCase() as 'admin' | 'user'
+      });
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+
+      return {
+        message: 'Login successful',
+        token,
+        user: userWithoutPassword
+      };
+    } catch (error: any) {
+      if (error.statusCode) {
+        throw error;
+      }
+      console.error('Error during login:', error);
+      throw createError('Login failed', 500);
+    }
+  }
+
+  async register(data: RegisterUserData) {
+    try {
+      // Check if user with email already exists
+      const existingUser = await prisma.user.findFirst({
+        where: { email: data.email },
+      });
+
+      if (existingUser) {
+        throw createError('User with this email already exists', 409);
+      }
+
+      // Hash password
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(data.password, saltRounds);
+
+      // Create user with default USER role
+      const user = await prisma.user.create({
+        data: {
+          email: data.email,
+          password: hashedPassword,
+          name: data.name,
+          role: 'USER', // Default role for new registrations
+        },
+      });
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+
+      return {
+        message: 'User registered successfully',
+        user: userWithoutPassword
+      };
+    } catch (error: any) {
+      if (error.statusCode) {
+        throw error;
+      }
+      console.error('Error during registration:', error);
+      throw createError('Registration failed', 500);
+    }
+  }
+
+  async loginUser(email: string) {
+    try {
+      const user = await prisma.user.findFirst({
+        where: { email },
+      });
+
+      if (!user) {
+        throw createError('User not found', 404);
+      }
+
+      // Generate JWT token
+      const token = generateJWT({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role.toLowerCase() as 'admin' | 'user'
+      });
+
+      return {
+        token,
+        user
+      };
+    } catch (error: any) {
+      if (error.statusCode) {
+        throw error;
+      }
+      console.error('Error logging in user:', error);
+      throw createError('Failed to login user', 500);
     }
   }
 }

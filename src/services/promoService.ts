@@ -41,16 +41,24 @@ export class PromoService {
     });
   }
   
-  async getPromos(page = 1, limit = 10) {
+  async getPromos(page = 1, limit = 10, isAdmin = false) {
     const skip = (page - 1) * limit;
+    
+    // For public users, only show active promos that are currently valid
+    const where = isAdmin ? {} : {
+      status: 'ACTIVE' as const,
+      validFrom: { lte: new Date() },
+      validTo: { gte: new Date() }
+    };
     
     const [promos, total] = await Promise.all([
       prisma.promo.findMany({
+        where,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.promo.count(),
+      prisma.promo.count({ where }),
     ]);
     
     return {
@@ -127,18 +135,38 @@ export class PromoService {
     return Math.round(discount * 100) / 100; // Round to 2 decimal places
   }
   
-  async applyPromoToCart(guestToken: string, promoCode: string) {
-    // Get cart details
-    const cart = await prisma.cart.findUnique({
-      where: { guestToken },
-      include: {
-        items: {
-          include: {
-            variant: true,
+  async applyPromoToCart(guestToken?: string, promoCode?: string, userId?: string) {
+    if (!promoCode) {
+      throw createError('Promo code is required', 400);
+    }
+
+    // Get cart details - either by guestToken or userId
+    let cart;
+    if (userId) {
+      cart = await prisma.cart.findFirst({
+        where: { userId },
+        include: {
+          items: {
+            include: {
+              variant: true,
+            },
           },
         },
-      },
-    });
+      });
+    } else if (guestToken) {
+      cart = await prisma.cart.findUnique({
+        where: { guestToken },
+        include: {
+          items: {
+            include: {
+              variant: true,
+            },
+          },
+        },
+      });
+    } else {
+      throw createError('Either guest token or user authentication required', 400);
+    }
     
     if (!cart) {
       throw createError('Cart not found', 404);
@@ -160,16 +188,20 @@ export class PromoService {
     const discount = await this.calculateDiscount(promo, cartSubtotal);
     
     return {
+      message: 'Promo code applied successfully',
       promo: {
         id: promo.id,
         code: promo.code,
         name: promo.name,
+        description: promo.description,
         type: promo.type,
         value: promo.value,
       },
-      cartSubtotal: Math.round(cartSubtotal * 100) / 100,
-      discount,
-      total: Math.round((cartSubtotal - discount) * 100) / 100,
+      discount: {
+        amount: discount,
+        originalSubtotal: Math.round(cartSubtotal * 100) / 100,
+        finalSubtotal: Math.round((cartSubtotal - discount) * 100) / 100,
+      }
     };
   }
   

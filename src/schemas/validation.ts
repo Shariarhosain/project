@@ -92,10 +92,12 @@ export const paginationSchema = z.object({
 });
 
 export const productQuerySchema = z.object({
-  category: z.string().optional(),
-  status: z.enum(['ACTIVE', 'INACTIVE', 'DISCONTINUED']).optional(),
-  search: z.string().optional(),
-}).merge(paginationSchema);
+  query: z.object({
+    category: z.string().optional(),
+    status: z.enum(['ACTIVE', 'INACTIVE', 'DISCONTINUED']).optional(),
+    search: z.string().optional(),
+  }).merge(paginationSchema),
+});
 
 export type CreateProductInput = z.infer<typeof createProductSchema>['body'];
 export type UpdateProductInput = z.infer<typeof updateProductSchema>['body'];
@@ -104,4 +106,4 @@ export type UpdateCartItemInput = z.infer<typeof updateCartItemSchema>['body'];
 export type CreatePromoInput = z.infer<typeof createPromoSchema>['body'];
 export type ApplyPromoInput = z.infer<typeof applyPromoSchema>['body'];
 export type CreateOrderInput = z.infer<typeof createOrderSchema>['body'];
-export type ProductQueryInput = z.infer<typeof productQuerySchema>;
+export type ProductQueryInput = z.infer<typeof productQuerySchema>['query'];

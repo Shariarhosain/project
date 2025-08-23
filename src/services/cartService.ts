@@ -22,10 +22,32 @@ export class CartService {
       if (existingCart && existingCart.expiresAt > new Date()) {
         return existingCart;
       }
+      
+      // If cart doesn't exist or expired, create new cart with the SAME guest token
+      if (guestToken) {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30); // Cart expires in 30 days
+
+        return await prisma.cart.create({
+          data: {
+            guestToken, // Use the provided guest token, don't generate new one
+            userId,
+            expiresAt,
+          },
+          include: {
+            items: {
+              include: {
+                product: true,
+                variant: true,
+              },
+            },
+          },
+        });
+      }
     }
     
-    // Create new cart
-    const newGuestToken = guestToken || generateGuestToken();
+    // Create new cart with new guest token (only when no guest token provided)
+    const newGuestToken = generateGuestToken();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30); // Cart expires in 30 days
 
@@ -93,7 +115,7 @@ export class CartService {
     };
   }
   
-  async addToCart(guestToken: string, data: AddToCartInput) {
+  async addToCart(guestTokenOrUserId: string | undefined, data: AddToCartInput, userId?: string) {
     const { variantId, quantity } = data;
     
     // Check if variant exists and has enough inventory
@@ -114,8 +136,10 @@ export class CartService {
       throw createError(`Only ${variant.inventory} items available in stock`, 400);
     }
     
-    // Get or create cart
-    const cart = await this.getOrCreateCart(guestToken);
+    // Get or create cart based on whether user is authenticated or guest
+    const cart = userId 
+      ? await this.getOrCreateCart(undefined, userId)
+      : await this.getOrCreateCart(guestTokenOrUserId);
     
     // Check if item already exists in cart
     const existingItem = await prisma.cartItem.findUnique({
@@ -149,7 +173,10 @@ export class CartService {
       });
     }
     
-    return await this.getCart(guestToken);
+    // Return updated cart
+    return userId 
+      ? await this.getOrCreateCart(undefined, userId)
+      : await this.getCart(guestTokenOrUserId!);
   }
   
   async updateCartItem(guestToken: string, itemId: string, data: UpdateCartItemInput) {

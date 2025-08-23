@@ -143,7 +143,9 @@ model OrderItem {
 model User {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   email     String   // Removed @unique to avoid transaction requirements
+  password  String   // Hashed password
   name      String
+  role      UserRole @default(USER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -151,6 +153,11 @@ model User {
   orders    Order[]
 
   @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  USER
 }
 
 enum ProductStatus {

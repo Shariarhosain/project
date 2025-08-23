@@ -4,12 +4,14 @@ import { createError } from '../middleware/errorHandler';
 import promoService from './promoService';
 
 export class OrderService {
-  async createOrder(guestToken: string, data: CreateOrderInput) {
+  async createOrder(userIdOrGuestToken: string, data: CreateOrderInput, isUser: boolean = false) {
     const { customerInfo, promoCode } = data;
     
-    // Get cart with items
-    const cart = await prisma.cart.findUnique({
-      where: { guestToken },
+    // Get cart with items - different query based on user type
+    const cart = await prisma.cart.findFirst({
+      where: isUser 
+        ? { userId: userIdOrGuestToken }
+        : { guestToken: userIdOrGuestToken },
       include: {
         items: {
           include: {
@@ -44,8 +46,8 @@ export class OrderService {
     }, 0);
     
     let discount = 0;
-    let promo = null;
-    let promoId = null;
+    let promo: any = null;
+    let promoId: string | null = null;
     
     // Apply promo if provided
     if (promoCode) {
@@ -69,12 +71,24 @@ export class OrderService {
     return order;
   }
   
-  async getOrders(page = 1, limit = 10, status?: string) {
+  async getOrders(params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    userId?: string;
+    isAdmin?: boolean;
+  } = {}) {
+    const { page = 1, limit = 10, status, userId, isAdmin = false } = params;
     const skip = (page - 1) * limit;
     const where: any = {};
     
     if (status) {
       where.status = status;
+    }
+    
+    // If not admin, filter by userId
+    if (!isAdmin && userId) {
+      where.userId = userId;
     }
     
     const [orders, total] = await Promise.all([
@@ -106,6 +120,13 @@ export class OrderService {
               name: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
         },
         skip,
         take: limit,
@@ -114,7 +135,7 @@ export class OrderService {
       prisma.order.count({ where }),
     ]);
     
-    return {
+    const result: any = {
       orders,
       pagination: {
         page,
@@ -123,9 +144,41 @@ export class OrderService {
         totalPages: Math.ceil(total / limit),
       },
     };
+    
+    // Add analytics for admin users
+    if (isAdmin) {
+      const [totalRevenue, orderCounts] = await Promise.all([
+        prisma.order.aggregate({
+          _sum: {
+            total: true,
+          },
+          where: {
+            status: {
+              in: ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'],
+            },
+          },
+        }),
+        prisma.order.groupBy({
+          by: ['status'],
+          _count: {
+            status: true,
+          },
+        }),
+      ]);
+      
+      result.summary = {
+        totalRevenue: totalRevenue._sum.total || 0,
+        orderCounts: orderCounts.reduce((acc, curr) => {
+          acc[curr.status] = curr._count.status;
+          return acc;
+        }, {} as Record<string, number>),
+      };
+    }
+    
+    return result;
   }
   
-  async getOrderById(id: string) {
+  async getOrderById(id: string, userId?: string) {
     const order = await prisma.order.findUnique({
       where: { id },
       include: {
@@ -165,10 +218,15 @@ export class OrderService {
       throw createError('Order not found', 404);
     }
     
+    // If userId is provided, verify order ownership (admins can access any order)
+    if (userId && order.userId !== userId) {
+      throw createError('Access denied: You can only view your own orders', 403);
+    }
+    
     return order;
   }
   
-  async getOrderByNumber(orderNumber: string) {
+  async getOrderByNumber(orderNumber: string, userId?: string) {
     const order = await prisma.order.findUnique({
       where: { orderNumber },
       include: {
@@ -208,10 +266,15 @@ export class OrderService {
       throw createError('Order not found', 404);
     }
     
+    // If userId is provided, verify order ownership (for logged-in users)
+    if (userId && order.userId && order.userId !== userId) {
+      throw createError('Access denied: You can only view your own orders', 403);
+    }
+    
     return order;
   }
   
-  async updateOrderStatus(id: string, status: string) {
+  async updateOrderStatus(id: string, status: string, notes?: string) {
     const validStatuses = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED'];
     
     if (!validStatuses.includes(status)) {
@@ -228,7 +291,10 @@ export class OrderService {
     
     return await prisma.order.update({
       where: { id },
-      data: { status: status as any },
+      data: { 
+        status: status as any,
+        ...(notes && { notes })
+      },
       include: {
         items: {
           include: {
@@ -239,49 +305,6 @@ export class OrderService {
         promo: true,
       },
     });
-  }
-  
-  async getOrderAnalytics() {
-    const [
-      totalOrders,
-      totalRevenue,
-      ordersByStatus,
-      recentOrders,
-    ] = await Promise.all([
-      prisma.order.count(),
-      prisma.order.aggregate({
-        _sum: {
-          total: true,
-        },
-      }),
-      prisma.order.groupBy({
-        by: ['status'],
-        _count: {
-          status: true,
-        },
-      }),
-      prisma.order.findMany({
-        take: 5,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          orderNumber: true,
-          total: true,
-          status: true,
-          createdAt: true,
-        },
-      }),
-    ]);
-    
-    return {
-      totalOrders,
-      totalRevenue: totalRevenue._sum.total || 0,
-      ordersByStatus: ordersByStatus.reduce((acc, item) => {
-        acc[item.status] = item._count.status;
-        return acc;
-      }, {} as Record<string, number>),
-      recentOrders,
-    };
   }
   
   private async generateOrderNumber(): Promise<string> {
@@ -379,6 +402,85 @@ export class OrderService {
     }
     
     return newOrder;
+  }
+
+  async getOrderAnalytics(startDate?: string, endDate?: string) {
+    const whereClause: any = {};
+    
+    if (startDate || endDate) {
+      whereClause.createdAt = {};
+      if (startDate) whereClause.createdAt.gte = new Date(startDate);
+      if (endDate) whereClause.createdAt.lte = new Date(endDate);
+    }
+
+    // Get basic statistics
+    const [totalStats, ordersByStatus, recentOrders] = await Promise.all([
+      prisma.order.aggregate({
+        where: whereClause,
+        _sum: { total: true },
+        _count: { id: true },
+        _avg: { total: true },
+      }),
+      prisma.order.groupBy({
+        by: ['status'],
+        where: whereClause,
+        _count: { status: true },
+      }),
+      prisma.order.findMany({
+        where: whereClause,
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          orderNumber: true,
+          status: true,
+          total: true,
+          createdAt: true,
+          customerInfo: true,
+        },
+      }),
+    ]);
+
+    // Get top products
+    const topProducts = await prisma.orderItem.groupBy({
+      by: ['productId'],
+      where: {
+        order: whereClause,
+      },
+      _sum: { quantity: true, totalPrice: true },
+      orderBy: { _sum: { quantity: 'desc' } },
+      take: 10,
+    });
+
+    // Enhance top products with product details
+    const productsWithDetails = await Promise.all(
+      topProducts.map(async (item) => {
+        const product = await prisma.product.findUnique({
+          where: { id: item.productId },
+          select: { id: true, name: true, slug: true },
+        });
+        return {
+          productId: item.productId,
+          productName: product?.name || 'Unknown Product',
+          totalSold: item._sum?.quantity || 0,
+          revenue: item._sum?.totalPrice || 0,
+        };
+      })
+    );
+
+    return {
+      summary: {
+        totalRevenue: totalStats._sum.total || 0,
+        totalOrders: totalStats._count.id || 0,
+        averageOrderValue: totalStats._avg.total || 0,
+      },
+      ordersByStatus: ordersByStatus.reduce((acc, item) => {
+        acc[item.status] = item._count.status;
+        return acc;
+      }, {} as Record<string, number>),
+      recentOrders,
+      topProducts: productsWithDetails,
+    };
   }
 }
 

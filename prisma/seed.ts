@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { MongoClient, ObjectId } from 'mongodb';
 import dotenv from 'dotenv';
+import bcrypt from 'bcrypt';
 
 dotenv.config();
 
@@ -9,47 +9,52 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting seed...');
 
-
-  // Use direct MongoDB connection to bypass replica set requirement
-  const client = new MongoClient(process.env.DATABASE_URL!);
-  
   try {
-    await client.connect();
-    const db = client.db('ecommerce');
-
-    // Create sample users individually
-    let userCount = 0;
+    // Create sample users with roles and passwords
     const users = [
+      {
+        email: 'admin@example.com',
+        name: 'Admin User',
+        password: await bcrypt.hash('admin123', 10),
+        role: 'ADMIN' as const,
+      },
       {
         email: 'john@example.com',
         name: 'John Doe',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        password: await bcrypt.hash('john123', 10),
+        role: 'USER' as const,
       },
       {
         email: 'jane@example.com',
         name: 'Jane Smith',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        password: await bcrypt.hash('jane123', 10),
+        role: 'USER' as const,
       }
     ];
     
-    for (const user of users) {
+    let userCount = 0;
+    for (const userData of users) {
       try {
-        await db.collection('users').insertOne(user);
-        userCount++;
-        console.log(`👤 Created user: ${user.email}`);
-      } catch (error: any) {
-        if (error.code === 11000) {
-          console.log(`⚠️  User ${user.email} already exists, skipping...`);
+        const existingUser = await prisma.user.findFirst({
+          where: { email: userData.email }
+        });
+        
+        if (!existingUser) {
+          await prisma.user.create({
+            data: userData
+          });
+          userCount++;
+          console.log(`👤 Created user: ${userData.email} (${userData.role})`);
         } else {
-          throw error;
+          console.log(`⚠️  User ${userData.email} already exists, skipping...`);
         }
+      } catch (error: any) {
+        console.error(`❌ Failed to create user ${userData.email}:`, error.message);
       }
     }
 
-    // Create sample products with variants
-    const products = [
+    // Create sample products with variants using Prisma
+    const productsData = [
       {
         name: 'Classic T-Shirt',
         description: 'A comfortable cotton t-shirt perfect for everyday wear',
@@ -59,9 +64,7 @@ async function main() {
           'https://example.com/images/t-shirt-1.jpg',
           'https://example.com/images/t-shirt-2.jpg',
         ],
-        status: 'ACTIVE',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        status: 'ACTIVE' as const,
         variants: [
           {
             name: 'Small - Black',
@@ -69,8 +72,6 @@ async function main() {
             price: 19.99,
             inventory: 50,
             attributes: { size: 'S', color: 'Black' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
           {
             name: 'Medium - Black',
@@ -78,8 +79,6 @@ async function main() {
             price: 19.99,
             inventory: 75,
             attributes: { size: 'M', color: 'Black' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
           {
             name: 'Large - Black',
@@ -87,8 +86,6 @@ async function main() {
             price: 19.99,
             inventory: 60,
             attributes: { size: 'L', color: 'Black' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
           {
             name: 'Small - White',
@@ -96,8 +93,6 @@ async function main() {
             price: 19.99,
             inventory: 40,
             attributes: { size: 'S', color: 'White' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
           {
             name: 'Medium - White',
@@ -105,8 +100,6 @@ async function main() {
             price: 19.99,
             inventory: 80,
             attributes: { size: 'M', color: 'White' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
         ],
       },
@@ -119,9 +112,7 @@ async function main() {
           'https://example.com/images/hoodie-1.jpg',
           'https://example.com/images/hoodie-2.jpg',
         ],
-        status: 'ACTIVE',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        status: 'ACTIVE' as const,
         variants: [
           {
             name: 'Small - Gray',
@@ -129,8 +120,6 @@ async function main() {
             price: 49.99,
             inventory: 30,
             attributes: { size: 'S', color: 'Gray' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
           {
             name: 'Medium - Gray',
@@ -138,8 +127,6 @@ async function main() {
             price: 49.99,
             inventory: 45,
             attributes: { size: 'M', color: 'Gray' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
           {
             name: 'Large - Gray',
@@ -147,8 +134,6 @@ async function main() {
             price: 49.99,
             inventory: 35,
             attributes: { size: 'L', color: 'Gray' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
           {
             name: 'Medium - Navy',
@@ -156,8 +141,6 @@ async function main() {
             price: 49.99,
             inventory: 25,
             attributes: { size: 'M', color: 'Navy' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
         ],
       },
@@ -170,9 +153,7 @@ async function main() {
           'https://example.com/images/headphones-1.jpg',
           'https://example.com/images/headphones-2.jpg',
         ],
-        status: 'ACTIVE',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        status: 'ACTIVE' as const,
         variants: [
           {
             name: 'Black',
@@ -180,8 +161,6 @@ async function main() {
             price: 129.99,
             inventory: 20,
             attributes: { color: 'Black' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
           {
             name: 'White',
@@ -189,8 +168,6 @@ async function main() {
             price: 129.99,
             inventory: 15,
             attributes: { color: 'White' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
         ],
       },
@@ -202,9 +179,7 @@ async function main() {
         images: [
           'https://example.com/images/mug-1.jpg',
         ],
-        status: 'ACTIVE',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        status: 'ACTIVE' as const,
         variants: [
           {
             name: 'Standard - White',
@@ -212,8 +187,6 @@ async function main() {
             price: 12.99,
             inventory: 100,
             attributes: { color: 'White', material: 'Ceramic' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
           {
             name: 'Standard - Blue',
@@ -221,8 +194,6 @@ async function main() {
             price: 12.99,
             inventory: 80,
             attributes: { color: 'Blue', material: 'Ceramic' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
         ],
       },
@@ -234,9 +205,7 @@ async function main() {
         images: [
           'https://example.com/images/case-1.jpg',
         ],
-        status: 'ACTIVE',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        status: 'ACTIVE' as const,
         variants: [
           {
             name: 'iPhone 14 - Clear',
@@ -244,8 +213,6 @@ async function main() {
             price: 24.99,
             inventory: 50,
             attributes: { model: 'iPhone 14', color: 'Clear' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
           {
             name: 'iPhone 14 - Black',
@@ -253,8 +220,6 @@ async function main() {
             price: 24.99,
             inventory: 60,
             attributes: { model: 'iPhone 14', color: 'Black' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
           {
             name: 'Samsung Galaxy S23 - Clear',
@@ -262,8 +227,6 @@ async function main() {
             price: 22.99,
             inventory: 40,
             attributes: { model: 'Samsung Galaxy S23', color: 'Clear' },
-            createdAt: new Date(),
-            updatedAt: new Date(),
           },
         ],
       },
@@ -272,41 +235,48 @@ async function main() {
     let productCount = 0;
     let variantCount = 0;
 
-    // Create products and variants using direct MongoDB
-    for (const productData of products) {
+    // Create products and variants using Prisma
+    for (const productData of productsData) {
       const { variants, ...product } = productData;
       
       try {
-        // Insert product
-        const productResult = await db.collection('products').insertOne(product);
-        productCount++;
-        console.log(`📦 Created product: ${product.name}`);
+        // Check if product exists
+        const existingProduct = await prisma.product.findUnique({
+          where: { slug: product.slug }
+        });
         
-        // Insert variants for this product
-        const variantsWithProductId = variants.map(variant => ({
-          ...variant,
-          productId: productResult.insertedId,
-        }));
-        
-        const variantResult = await db.collection('product_variants').insertMany(variantsWithProductId);
-        variantCount += variantResult.insertedCount;
-        
-      } catch (error: any) {
-        if (error.code === 11000) {
-          console.log(`⚠️  Product ${product.name} already exists, skipping...`);
+        if (!existingProduct) {
+          // Create product with variants
+          const createdProduct = await prisma.product.create({
+            data: {
+              ...product,
+              variants: {
+                create: variants
+              }
+            },
+            include: {
+              variants: true
+            }
+          });
+          
+          productCount++;
+          variantCount += createdProduct.variants.length;
+          console.log(`📦 Created product: ${product.name} with ${createdProduct.variants.length} variants`);
         } else {
-          throw error;
+          console.log(`⚠️  Product ${product.name} already exists, skipping...`);
         }
+      } catch (error: any) {
+        console.error(`❌ Failed to create product ${product.name}:`, error.message);
       }
     }
 
-    // Create sample promos
-    const promoData = [
+    // Create sample promos using Prisma
+    const promosData = [
       {
         code: 'WELCOME10',
         name: 'Welcome Discount',
         description: '10% off your first order',
-        type: 'PERCENTAGE',
+        type: 'PERCENTAGE' as const,
         value: 10,
         minAmount: 50,
         maxDiscount: 20,
@@ -314,30 +284,26 @@ async function main() {
         usageCount: 0,
         validFrom: new Date(),
         validTo: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-        status: 'ACTIVE',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        status: 'ACTIVE' as const,
       },
       {
         code: 'SAVE20',
         name: 'Save $20',
         description: '$20 off orders over $100',
-        type: 'FIXED',
+        type: 'FIXED' as const,
         value: 20,
         minAmount: 100,
         usageLimit: 50,
         usageCount: 0,
         validFrom: new Date(),
         validTo: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days from now
-        status: 'ACTIVE',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        status: 'ACTIVE' as const,
       },
       {
         code: 'SUMMER25',
         name: 'Summer Sale',
         description: '25% off summer collection',
-        type: 'PERCENTAGE',
+        type: 'PERCENTAGE' as const,
         value: 25,
         minAmount: 75,
         maxDiscount: 50,
@@ -345,61 +311,65 @@ async function main() {
         usageCount: 0,
         validFrom: new Date(),
         validTo: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
-        status: 'ACTIVE',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        status: 'ACTIVE' as const,
       },
       {
         code: 'FREESHIP',
         name: 'Free Shipping',
         description: 'Free shipping on any order',
-        type: 'FIXED',
+        type: 'FIXED' as const,
         value: 9.99,
         minAmount: 25,
         usageLimit: 1000,
         usageCount: 0,
         validFrom: new Date(),
         validTo: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
-        status: 'ACTIVE',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        status: 'ACTIVE' as const,
       },
       {
         code: 'EXPIRED',
         name: 'Expired Promo',
         description: 'This promo has expired',
-        type: 'PERCENTAGE',
+        type: 'PERCENTAGE' as const,
         value: 50,
         validFrom: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000), // 60 days ago
         validTo: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
-        status: 'EXPIRED',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        status: 'EXPIRED' as const,
       },
     ];
     
     let promoCount = 0;
-    for (const promo of promoData) {
+    for (const promoData of promosData) {
       try {
-        await db.collection('promos').insertOne(promo);
-        promoCount++;
-        console.log(`🎫 Created promo: ${promo.code}`);
-      } catch (error: any) {
-        if (error.code === 11000) {
-          console.log(`⚠️  Promo ${promo.code} already exists, skipping...`);
+        const existingPromo = await prisma.promo.findUnique({
+          where: { code: promoData.code }
+        });
+        
+        if (!existingPromo) {
+          await prisma.promo.create({
+            data: promoData
+          });
+          promoCount++;
+          console.log(`🎫 Created promo: ${promoData.code}`);
         } else {
-          throw error;
+          console.log(`⚠️  Promo ${promoData.code} already exists, skipping...`);
         }
+      } catch (error: any) {
+        console.error(`❌ Failed to create promo ${promoData.code}:`, error.message);
       }
     }
 
     console.log('✅ Seed completed successfully!');
     console.log('\n📊 Summary:');
-    console.log(`- Users: ${userCount}`);
+    console.log(`- Users: ${userCount} (including 1 admin)`);
     console.log(`- Products: ${productCount}`);
     console.log(`- Product Variants: ${variantCount}`);
     console.log(`- Promo Codes: ${promoCount}`);
-    console.log('\n🎯 Test with these promo codes:');
+    console.log('\n🎯 Test with these credentials:');
+    console.log('- Admin: admin@example.com / admin123 (role: ADMIN)');
+    console.log('- User: john@example.com / john123 (role: USER)');
+    console.log('- User: jane@example.com / jane123 (role: USER)');
+    console.log('\n🎫 Test with these promo codes:');
     console.log('- WELCOME10 (10% off, min $50)');
     console.log('- SAVE20 ($20 off, min $100)');
     console.log('- SUMMER25 (25% off, min $75)');
@@ -409,7 +379,7 @@ async function main() {
     console.error('❌ Seed failed:', error);
     throw error;
   } finally {
-    await client.close();
+    // No need to close client as we're using Prisma
   }
 }
 

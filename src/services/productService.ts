@@ -41,7 +41,9 @@ export class ProductService {
   
   async getProducts(query: ProductQueryInput) {
     const { page = 1, limit = 10, category, status, search } = query;
-    const skip = (page - 1) * limit;
+    const pageNum = typeof page === 'string' ? parseInt(page, 10) : page;
+    const limitNum = typeof limit === 'string' ? parseInt(limit, 10) : limit;
+    const skip = (pageNum - 1) * limitNum;
     
     const where: any = {};
     
@@ -67,7 +69,7 @@ export class ProductService {
           variants: true,
         },
         skip,
-        take: limit,
+        take: limitNum,
         orderBy: { createdAt: 'desc' },
       }),
       prisma.product.count({ where }),
@@ -76,10 +78,10 @@ export class ProductService {
     return {
       products,
       pagination: {
-        page,
-        limit,
+        page: pageNum,
+        limit: limitNum,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.ceil(total / limitNum),
       },
     };
   }
