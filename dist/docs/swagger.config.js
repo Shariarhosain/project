@@ -29,6 +29,10 @@ exports.swaggerOptions = {
                 url: `http://localhost:${process.env.PORT || 3000}`,
                 description: 'Development server',
             },
+            {
+                url: `hhttps://project-production-75d9.up.railway.app`,
+                description: 'Production server',
+            }
         ],
         tags: [
             {

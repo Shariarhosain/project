@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
+import path from 'path';
 
 import { errorHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
@@ -28,6 +29,9 @@ app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
+
+// Serve uploaded images
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

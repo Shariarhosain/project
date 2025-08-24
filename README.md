@@ -2,6 +2,8 @@
 
 A modern, **guest-first** e-commerce backend built with **Node.js**, **TypeScript**, **Express**, **Prisma**, and **MongoDB**. This API prioritizes immediate shopping experiences without registration barriers, while providing comprehensive management tools for registered users and administrators.
 
+**✨ NEW: Direct Image Upload** - Create products and upload images in a single request with automatic processing!
+
 ## 🌐 **Live API Server**
 **Production API**: https://project-production-75d9.up.railway.app/  
 **Live Documentation**: https://project-production-75d9.up.railway.app/api-docs
@@ -759,7 +761,8 @@ Authorization: Bearer <admin-jwt>
 | `GET` | `/api/products` | Browse products with filters | Public | `400`, `500` |
 | `GET` | `/api/products/:id` | Get product by ID | Public | `404` |
 | `GET` | `/api/products/slug/:slug` | Get product by slug | Public | `404` |
-| `POST` | `/api/products` | Create new product | Admin | `401`, `403`, `422` |
+| `POST` | `/api/products` | Create new product with images | Admin | `401`, `403`, `422` |
+| `POST` | `/api/products/upload-image` | Upload product images separately | Admin | `401`, `403`, `400`, `413` |
 | `PUT` | `/api/products/:id` | Update product | Admin | `401`, `403`, `404`, `422` |
 | `DELETE` | `/api/products/:id` | Delete product | Admin | `401`, `403`, `404` |
 
@@ -781,6 +784,61 @@ Authorization: Bearer <admin-jwt>
   }
 }
 ```
+
+## 📸 Image Upload System
+
+### **🎯 Direct Product Creation with Images**
+
+Create products and upload images in a **single request** using Swagger UI's multipart form!
+
+#### **How to Use:**
+
+1. **Login as Admin**: Use `POST /api/users/login` with admin credentials
+2. **Authorize in Swagger**: Click "Authorize" → Enter `Bearer <admin-jwt-token>`
+3. **Go to** `POST /api/products` endpoint
+4. **Fill the form**:
+   ```
+   name: iPhone 15 Pro
+   slug: iphone-15-pro
+   category: smartphones
+   description: Latest smartphone
+   status: ACTIVE
+   images: [Click "Choose Files" - Select your images] 📁
+   variants: [{"name":"128GB","sku":"IPH15P-128","price":999.99,"inventory":50}]
+   ```
+5. **Execute** - Your product will be created with processed images!
+
+#### **Image Processing Features:**
+- ✅ **Auto Resize**: Images resized to 800x800px
+- ✅ **Thumbnails**: 200x200px thumbnails generated
+- ✅ **Format Support**: JPG, PNG, WebP, GIF
+- ✅ **Size Limits**: 5MB per image, up to 10 images
+- ✅ **Full URLs**: Complete URLs with domain
+
+#### **Response Example:**
+```json
+{
+  "id": "product-id",
+  "name": "iPhone 15 Pro",
+  "images": [
+    "https://project-production-75d9.up.railway.app/uploads/products/uuid-1.jpg",
+    "https://project-production-75d9.up.railway.app/uploads/products/uuid-2.jpg"
+  ],
+  "variants": [...]
+}
+```
+
+#### **Environment Configuration:**
+```env
+# Your .env file
+SERVER_URL=http://localhost:3000
+PRODUCTION_URL=https://project-production-75d9.up.railway.app
+```
+
+**Dependencies Added:**
+- `multer` - File upload middleware
+- `sharp` - Image processing
+- `@types/multer` - TypeScript definitions
 
 ### 🛒 Cart Endpoints
 
@@ -912,6 +970,9 @@ Authorization: Bearer <admin-jwt>
 2. **Install dependencies**
    ```bash
    npm install
+   
+   # Image upload dependencies (already included)
+   npm install multer @types/multer sharp
    ```
 
 3. **Configure environment**
@@ -927,6 +988,10 @@ Authorization: Bearer <admin-jwt>
    # Server
    PORT=3000
    NODE_ENV=development
+   
+   # Image Upload URLs (NEW!)
+   SERVER_URL=http://localhost:3000
+   PRODUCTION_URL=https://project-production-75d9.up.railway.app
    
    # CORS (optional)
    CORS_ORIGIN="http://localhost:3000"
@@ -1078,6 +1143,10 @@ Our Swagger/OpenAPI documentation includes comprehensive error schemas for each 
 - ✅ **Real-time inventory** - stock validation and management
 - ✅ **Smart search** - filtering, pagination, sorting
 - ✅ **SEO optimization** - slugs, meta data, structured data
+- ✅ **📸 Direct Image Upload** - upload product images with creation
+- ✅ **🖼️ Automatic Image Processing** - resize, optimize, thumbnails
+- ✅ **🌐 Full URL Generation** - complete image URLs with domain
+- ✅ **📁 Multiple Format Support** - JPG, PNG, WebP, GIF
 
 ### **🎫 Intelligent Promotion Engine**
 - ✅ **Flexible discounts** - percentage and fixed amount
@@ -1261,7 +1330,17 @@ This **guest-first headless e-commerce backend** is designed to provide:
 ### **👑 For Administrators**  
 - **Complete backend control** for business operations
 - **Product and inventory management** with variants
+- **📸 Direct image upload** with automatic processing
 - **Order processing** and fulfillment tools
 - **User and promotion management** with analytics
+
+## 📋 Recent Updates
+
+### **✨ v1.1.0 - Image Upload System (August 2025)**
+- 🆕 **Direct Image Upload**: Create products with images in single request
+- 🆕 **Automatic Processing**: Resize, optimize, and generate thumbnails
+- 🆕 **Full URL Generation**: Complete image URLs with domain detection
+- 🆕 **Multi-format Support**: JPG, PNG, WebP, GIF support
+- 🆕 **Swagger Integration**: Direct file upload in API documentation
 
 **Built with modern technologies, comprehensive error handling, extensive API documentation, and a security-first approach - this backend provides everything needed to power exceptional shopping experiences.** 🛍️✨
