@@ -25,6 +25,209 @@ curl https://project-production-75d9.up.railway.app/api/promos
 - **Promotions**: https://project-production-75d9.up.railway.app/api/promos
 - **Interactive Docs**: https://project-production-75d9.up.railway.app/api-docs
 
+## 🌊 System Flow Diagrams
+
+### 🎭 **Guest User Flow** (Priority #1 - No Registration Required)
+
+```mermaid
+graph TD
+    A[🌐 Guest Visitor] --> B[📦 Browse Products]
+    B --> B1[GET /api/products]
+    B1 --> B2[🔍 Search & Filter]
+    B2 --> C{Want to Shop?}
+    
+    C -->|Yes| D[🛒 Get Cart]
+    C -->|Just Browsing| B2
+    
+    D --> D1[GET /api/carts]
+    D1 --> D2[🎟️ Receive Guest Token]
+    D2 --> E[➕ Add Items to Cart]
+    
+    E --> E1[POST /api/carts/items]
+    E1 --> E2[✏️ Update Quantities]
+    E2 --> E3[PUT /api/carts/items/:id]
+    E3 --> F{Apply Promo?}
+    
+    F -->|Yes| G[🎫 Apply Promotion]
+    F -->|No| H[💳 Checkout]
+    
+    G --> G1[POST /api/promos/apply]
+    G1 --> G2[💰 See Discount Applied]
+    G2 --> H
+    
+    H --> H1[POST /api/orders]
+    H1 --> H2[📋 Enter Customer Info]
+    H2 --> I[✅ Order Created]
+    I --> I1[📧 Order Confirmation]
+    I1 --> J[📱 Track with Order Number]
+    
+    style A fill:#e1f5fe
+    style D2 fill:#fff3e0
+    style I fill:#e8f5e8
+```
+
+### 👤 **Registered User Flow** (Enhanced Experience)
+
+```mermaid
+graph TD
+    A[👤 Returning User] --> B{Already Registered?}
+    
+    B -->|No| C[📝 Register Account]
+    B -->|Yes| D[🔐 Login]
+    
+    C --> C1[POST /api/users/register]
+    C1 --> C2[📧 Account Created]
+    C2 --> D
+    
+    D --> D1[POST /api/users/login]
+    D1 --> D2[🎟️ Receive JWT Token]
+    D2 --> E[🏠 User Dashboard]
+    
+    E --> F{What to do?}
+    
+    F -->|Shop| G[📦 Browse Products]
+    F -->|View Orders| H[📋 Order History]
+    F -->|Manage Profile| I[👤 Account Settings]
+    
+    G --> G1[GET /api/products]
+    G1 --> G2[🛒 Get Persistent Cart]
+    G2 --> G3[GET /api/carts + JWT]
+    G3 --> G4[🔄 Cart Synced Across Devices]
+    G4 --> J[➕ Add Items]
+    
+    H --> H1[GET /api/orders]
+    H1 --> H2[📊 View Purchase History]
+    H2 --> H3[🔍 Track Order Status]
+    
+    I --> I1[GET /api/users/me]
+    I1 --> I2[✏️ Update Profile]
+    I2 --> I3[PUT /api/users/me]
+    
+    J --> K[💳 Enhanced Checkout]
+    K --> K1[🚀 Faster Process]
+    K1 --> K2[💾 Saved Customer Info]
+    K2 --> L[✅ Order Placed]
+    
+    style A fill:#e8eaf6
+    style D2 fill:#e3f2fd
+    style G4 fill:#e8f5e8
+    style K1 fill:#fff3e0
+```
+
+### 👑 **Admin User Flow** (Complete System Management)
+
+```mermaid
+graph TD
+    A[👑 Admin User] --> B[🔐 Admin Login]
+    B --> B1[POST /api/users/login]
+    B1 --> B2[🛡️ Verify Admin Role]
+    B2 --> C[🏢 Admin Dashboard]
+    
+    C --> D{Management Area}
+    
+    D -->|Products| E[📦 Product Management]
+    D -->|Orders| F[📋 Order Management]  
+    D -->|Users| G[👥 User Management]
+    D -->|Promos| H[🎫 Promotion Management]
+    D -->|Analytics| I[📊 Reports & Analytics]
+    
+    E --> E1{Product Actions}
+    E1 -->|Create| E2[POST /api/products]
+    E1 -->|Update| E3[PUT /api/products/:id]
+    E1 -->|Delete| E4[DELETE /api/products/:id]
+    E1 -->|View All| E5[GET /api/products?includeInactive=true]
+    E2 --> E6[🎨 Manage Variants]
+    E6 --> E7[📊 Update Inventory]
+    
+    F --> F1{Order Actions}
+    F1 -->|View All| F2[GET /api/orders]
+    F1 -->|Update Status| F3[PATCH /api/orders/:id/status]
+    F1 -->|Fulfill| F4[📦 Process Shipment]
+    F2 --> F5[🔍 Filter & Search Orders]
+    F3 --> F6[📧 Notify Customer]
+    
+    G --> G1{User Actions}
+    G1 -->|View All| G2[GET /api/users]
+    G1 -->|Create| G3[POST /api/users]
+    G1 -->|Update| G4[PUT /api/users/:id]
+    G1 -->|Delete| G5[DELETE /api/users/:id]
+    G2 --> G6[👥 Manage Roles & Permissions]
+    
+    H --> H1{Promotion Actions}
+    H1 -->|Create| H2[POST /api/promos]
+    H1 -->|Update| H3[PUT /api/promos/:id]
+    H1 -->|Delete| H4[DELETE /api/promos/:id]
+    H1 -->|Analytics| H5[📈 Track Usage]
+    H2 --> H6[🎯 Set Conditions & Limits]
+    
+    I --> I1[📊 Sales Reports]
+    I1 --> I2[👥 User Statistics]
+    I2 --> I3[📦 Inventory Levels]
+    I3 --> I4[💰 Revenue Analytics]
+    I4 --> I5[🎫 Promotion Performance]
+    
+    style A fill:#fce4ec
+    style B2 fill:#ffebee
+    style C fill:#f3e5f5
+    style E7 fill:#e8f5e8
+    style F6 fill:#fff3e0
+    style G6 fill:#e3f2fd
+    style H6 fill:#fff9c4
+    style I5 fill:#e0f2f1
+```
+
+### 🔄 **Complete System Integration Flow**
+
+```mermaid
+graph TB
+    subgraph "🎭 Guest Layer"
+        A1[Browse Products] --> A2[Add to Cart]
+        A2 --> A3[Apply Promos]
+        A3 --> A4[Checkout]
+    end
+    
+    subgraph "👤 User Layer"  
+        B1[Login/Register] --> B2[Persistent Cart]
+        B2 --> B3[Order History]
+        B3 --> B4[Account Management]
+    end
+    
+    subgraph "👑 Admin Layer"
+        C1[Product Management] --> C2[Order Processing]
+        C2 --> C3[User Management]
+        C3 --> C4[Analytics]
+    end
+    
+    subgraph "🗄️ Database Layer"
+        D1[(Products)] --> D2[(Carts)]
+        D2 --> D3[(Orders)]
+        D3 --> D4[(Users)]
+        D4 --> D5[(Promos)]
+    end
+    
+    subgraph "🔒 Security Layer"
+        E1[Guest Tokens] --> E2[JWT Auth]
+        E2 --> E3[Role-based Access]
+        E3 --> E4[Input Validation]
+    end
+    
+    A4 --> D3
+    B2 --> D2
+    C1 --> D1
+    C2 --> D3
+    C3 --> D4
+    
+    E1 --> A2
+    E2 --> B1
+    E3 --> C1
+    
+    style A1 fill:#e1f5fe
+    style B1 fill:#e8eaf6
+    style C1 fill:#fce4ec
+    style D1 fill:#f1f8e9
+    style E1 fill:#fff3e0
+```
+
 ## 🎯 System Overview
 
 ### **Core Philosophy: Guest-First Shopping**
