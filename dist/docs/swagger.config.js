@@ -32,7 +32,7 @@ exports.swaggerOptions = {
         ],
         tags: [
             {
-                name: '01 🔐 Authentication',
+                name: 'Authentication',
                 description: '🔐 **Authentication** - Login, register, and get JWT tokens',
             },
             {

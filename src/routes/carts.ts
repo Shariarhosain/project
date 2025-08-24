@@ -80,9 +80,11 @@ const router = express.Router();
  *         description: |
  *           **Optional**: 
  *           - No header = New guest cart created
- *           - `Bearer <guest-token>` = Existing guest cart
- *           - `Bearer <jwt-token>` = User cart
- *         example: "Bearer guest-uuid-token-here"
+ *           - `Bearer <guest-uuid>` = Existing guest cart (UUID format)
+ *           - `Bearer <jwt-token>` = User cart (JWT format)
+ *           
+ *           **Note**: In Swagger UI, paste only the token value (without "Bearer " prefix)
+ *         example: "963154cb-1f97-4fc2-8a08-ad8ccae7ce84"
  *     responses:
  *       200:
  *         description: Cart details
@@ -118,10 +120,35 @@ router.get('/', guestOrAuth, ensureGuestToken, async (req: AuthenticatedRequest,
  * @swagger
  * /api/carts/items:
  *   post:
- *     summary: Add item to cart
+ *     summary: ➕ Add item to cart (Guest/User)
+ *     description: |
+ *       **GUEST/USER ENDPOINT**: Add a product variant to the shopping cart.
+ *       
+ *       **Authentication Options**:
+ *       - **Guest**: Use guest token or no token (new guest token will be generated)
+ *       - **Registered User**: Use JWT token to add to user's cart
+ *       
+ *       **How it works**:
+ *       - **No token**: Creates new guest cart and returns guest token in X-Guest-Token header
+ *       - **Guest token**: Adds to existing guest cart
+ *       - **User token**: Adds to user's cart
  *     tags: [Carts]
  *     security:
  *       - BearerAuth: []
+ *       - GuestToken: []
+ *       - {}
+ *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: |
+ *           **Optional**: 
+ *           - No header = New guest cart created
+ *           - `Bearer <guest-token>` = Existing guest cart
+ *           - `Bearer <jwt-token>` = User cart
+ *         example: "Bearer guest-uuid-token-here"
  *     requestBody:
  *       required: true
  *       content:
@@ -139,6 +166,11 @@ router.get('/', guestOrAuth, ensureGuestToken, async (req: AuthenticatedRequest,
  *     responses:
  *       200:
  *         description: Item added to cart
+ *         headers:
+ *           X-Guest-Token:
+ *             description: Guest token (only for new guest carts)
+ *             schema:
+ *               type: string
  *         content:
  *           application/json:
  *             schema:
@@ -166,10 +198,23 @@ router.post('/items', guestOrAuth, ensureGuestToken, validate(addToCartSchema), 
  * @swagger
  * /api/carts/items/{itemId}:
  *   put:
- *     summary: Update cart item quantity
+ *     summary: 🔄 Update cart item quantity (Guest/User)
+ *     description: |
+ *       **GUEST/USER ENDPOINT**: Update the quantity of an item in the cart.
+ *       
+ *       **Authentication Options**:
+ *       - **Guest**: Use guest token or no token (new guest token will be generated)
+ *       - **Registered User**: Use JWT token to update user's cart
+ *       
+ *       **How it works**:
+ *       - **No token**: Creates new guest cart and returns guest token in X-Guest-Token header
+ *       - **Guest token**: Updates existing guest cart item
+ *       - **User token**: Updates user's cart item
  *     tags: [Carts]
  *     security:
  *       - BearerAuth: []
+ *       - GuestToken: []
+ *       - {}
  *     parameters:
  *       - in: path
  *         name: itemId
@@ -177,6 +222,17 @@ router.post('/items', guestOrAuth, ensureGuestToken, validate(addToCartSchema), 
  *         schema:
  *           type: string
  *         description: Cart item ID
+ *       - in: header
+ *         name: Authorization
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: |
+ *           **Optional**: 
+ *           - No header = New guest cart created
+ *           - `Bearer <guest-token>` = Existing guest cart
+ *           - `Bearer <jwt-token>` = User cart
+ *         example: "Bearer guest-uuid-token-here"
  *     requestBody:
  *       required: true
  *       content:
@@ -192,17 +248,18 @@ router.post('/items', guestOrAuth, ensureGuestToken, validate(addToCartSchema), 
  *     responses:
  *       200:
  *         description: Cart item updated
+ *         headers:
+ *           X-Guest-Token:
+ *             description: Guest token (only for new guest carts)
+ *             schema:
+ *               type: string
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Cart'
  */
-router.put('/items/:itemId', guestOrAuth, validate(updateCartItemSchema), async (req: AuthenticatedRequest, res, next) => {
+router.put('/items/:itemId', guestOrAuth, ensureGuestToken, validate(updateCartItemSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
-    if (!req.user && !req.guestToken) {
-      throw createError('Authentication required', 401);
-    }
-    
     // For now, use guest token approach for both users and guests
     // TODO: Update cart service to handle user-based operations
     const tokenToUse = req.user ? `user:${req.user.id}` : req.guestToken!;
@@ -217,10 +274,23 @@ router.put('/items/:itemId', guestOrAuth, validate(updateCartItemSchema), async 
  * @swagger
  * /api/carts/items/{itemId}:
  *   delete:
- *     summary: Remove item from cart
+ *     summary: 🗑️ Remove item from cart (Guest/User)
+ *     description: |
+ *       **GUEST/USER ENDPOINT**: Remove an item completely from the cart.
+ *       
+ *       **Authentication Options**:
+ *       - **Guest**: Use guest token or no token (new guest token will be generated)
+ *       - **Registered User**: Use JWT token to remove from user's cart
+ *       
+ *       **How it works**:
+ *       - **No token**: Creates new guest cart and returns guest token in X-Guest-Token header
+ *       - **Guest token**: Removes item from existing guest cart
+ *       - **User token**: Removes item from user's cart
  *     tags: [Carts]
  *     security:
  *       - BearerAuth: []
+ *       - GuestToken: []
+ *       - {}
  *     parameters:
  *       - in: path
  *         name: itemId
@@ -228,20 +298,32 @@ router.put('/items/:itemId', guestOrAuth, validate(updateCartItemSchema), async 
  *         schema:
  *           type: string
  *         description: Cart item ID
+ *       - in: header
+ *         name: Authorization
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: |
+ *           **Optional**: 
+ *           - No header = New guest cart created
+ *           - `Bearer <guest-token>` = Existing guest cart
+ *           - `Bearer <jwt-token>` = User cart
+ *         example: "Bearer guest-uuid-token-here"
  *     responses:
  *       200:
  *         description: Item removed from cart
+ *         headers:
+ *           X-Guest-Token:
+ *             description: Guest token (only for new guest carts)
+ *             schema:
+ *               type: string
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Cart'
  */
-router.delete('/items/:itemId', guestOrAuth, async (req: AuthenticatedRequest, res, next) => {
+router.delete('/items/:itemId', guestOrAuth, ensureGuestToken, async (req: AuthenticatedRequest, res, next) => {
   try {
-    if (!req.user && !req.guestToken) {
-      throw createError('Authentication required', 401);
-    }
-    
     const tokenToUse = req.user ? `user:${req.user.id}` : req.guestToken!;
     const cart = await cartService.removeCartItem(tokenToUse, req.params.itemId);
     res.json(cart);
@@ -254,24 +336,50 @@ router.delete('/items/:itemId', guestOrAuth, async (req: AuthenticatedRequest, r
  * @swagger
  * /api/carts/clear:
  *   post:
- *     summary: Clear all items from cart
+ *     summary: 🧹 Clear all items from cart (Guest/User)
+ *     description: |
+ *       **GUEST/USER ENDPOINT**: Remove all items from the cart.
+ *       
+ *       **Authentication Options**:
+ *       - **Guest**: Use guest token or no token (new guest token will be generated)
+ *       - **Registered User**: Use JWT token to clear user's cart
+ *       
+ *       **How it works**:
+ *       - **No token**: Creates new guest cart and returns guest token in X-Guest-Token header
+ *       - **Guest token**: Clears existing guest cart
+ *       - **User token**: Clears user's cart
  *     tags: [Carts]
  *     security:
  *       - BearerAuth: []
+ *       - GuestToken: []
+ *       - {}
+ *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: |
+ *           **Optional**: 
+ *           - No header = New guest cart created
+ *           - `Bearer <guest-token>` = Existing guest cart
+ *           - `Bearer <jwt-token>` = User cart
+ *         example: "Bearer guest-uuid-token-here"
  *     responses:
  *       200:
  *         description: Cart cleared
+ *         headers:
+ *           X-Guest-Token:
+ *             description: Guest token (only for new guest carts)
+ *             schema:
+ *               type: string
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Cart'
  */
-router.post('/clear', guestOrAuth, async (req: AuthenticatedRequest, res, next) => {
+router.post('/clear', guestOrAuth, ensureGuestToken, async (req: AuthenticatedRequest, res, next) => {
   try {
-    if (!req.user && !req.guestToken) {
-      throw createError('Authentication required', 401);
-    }
-    
     const tokenToUse = req.user ? `user:${req.user.id}` : req.guestToken!;
     const cart = await cartService.clearCart(tokenToUse);
     res.json(cart);

@@ -2,8 +2,96 @@ import { prisma } from '../lib/prisma';
 import { CreateOrderInput } from '../schemas/validation';
 import { createError } from '../middleware/errorHandler';
 import promoService from './promoService';
+import cartService from './cartService';
+import userService from './UserService';
 
 export class OrderService {
+  /**
+   * Create order for guests with optional account creation
+   */
+  async createOrderForGuestOrUser(guestTokenOrUserId: string, data: CreateOrderInput, isUser: boolean = false) {
+    const { customerInfo, promoCode, createAccount, password } = data;
+    
+    // Get cart - handle both guest and user carts
+    const cart = await cartService.getOrCreateCart(isUser ? undefined : guestTokenOrUserId, isUser ? guestTokenOrUserId : undefined);
+    
+    if (!cart || cart.items.length === 0) {
+      throw createError(
+        isUser 
+          ? 'Your cart is empty. Please add items to your cart before creating an order.' 
+          : 'Cart is empty. Please add items to your cart before creating an order. Use the guest token from the X-Guest-Token header for subsequent requests.',
+        400
+      );
+    }
+    
+    let userId = isUser ? guestTokenOrUserId : undefined;
+    let newUserData = null;
+    
+    // If guest wants to create account, create the user first
+    if (!isUser && createAccount && password) {
+      try {
+        // Check if user with this email already exists
+        const existingUser = await prisma.user.findFirst({
+          where: { email: customerInfo.email }
+        });
+        
+        if (existingUser) {
+          throw createError('An account with this email already exists. Please login instead.', 409);
+        }
+        
+        // Register new user with guest cart transfer
+        const registerResult = await userService.registerWithGuestCart({
+          email: customerInfo.email,
+          password: password,
+          name: customerInfo.name
+        }, guestTokenOrUserId);
+        
+        userId = registerResult.user.id;
+        newUserData = {
+          user: registerResult.user,
+          token: registerResult.token
+        };
+      } catch (error: any) {
+        // If user creation fails, we can still create the order as guest
+        console.error('Failed to create user account during order:', error);
+        if (error.statusCode === 409) {
+          throw error; // Re-throw user exists error
+        }
+        // For other errors, continue as guest order
+      }
+    }
+    
+    // Create the order
+    const order = await this.processOrder(cart, data, userId);
+    
+    // Return order with optional user data
+    return {
+      ...order,
+      ...(newUserData && { 
+        accountCreated: true,
+        ...newUserData
+      })
+    };
+  }
+  /**
+   * Create order for authenticated user
+   */
+  async createOrderForUser(userId: string, data: CreateOrderInput) {
+    const { customerInfo, promoCode } = data;
+    
+    // Get user's cart
+    const cart = await cartService.getOrCreateCart(undefined, userId);
+    
+    if (!cart || cart.items.length === 0) {
+      throw createError('Cart is empty', 400);
+    }
+    
+    return await this.processOrder(cart, data, userId);
+  }
+
+  /**
+   * Create order for guest (legacy method - kept for backward compatibility)
+   */
   async createOrder(userIdOrGuestToken: string, data: CreateOrderInput, isUser: boolean = false) {
     const { customerInfo, promoCode } = data;
     
@@ -30,6 +118,20 @@ export class OrderService {
       throw createError('Cart is empty', 400);
     }
     
+    return await this.processOrder(cart, data, isUser ? userIdOrGuestToken : undefined);
+  }
+
+  /**
+   * Process order creation (common logic)
+   */
+  private async processOrder(cart: any, data: CreateOrderInput, userId?: string) {
+    const { customerInfo, paymentInfo, promoCode } = data;
+    
+    // Validate payment information (optional for now)
+    if (paymentInfo) {
+      // Payment validation logic can be added here
+    }
+    
     // Check inventory for all items
     for (const item of cart.items) {
       if (item.variant.inventory < item.quantity) {
@@ -41,7 +143,7 @@ export class OrderService {
     }
     
     // Calculate cart totals
-    const subtotal = cart.items.reduce((sum, item) => {
+    const subtotal = cart.items.reduce((sum: number, item: any) => {
       return sum + (item.variant.price * item.quantity);
     }, 0);
     
@@ -66,7 +168,7 @@ export class OrderService {
     const orderNumber = await this.generateOrderNumber();
     
     // Create order without transaction (for MongoDB without replica set)
-    const order = await this.createOrderWithoutTransaction(cart, subtotal, discount, total, promo, promoId, promoCode, customerInfo, orderNumber);
+    const order = await this.createOrderWithoutTransaction(cart, subtotal, discount, total, promo, promoId, promoCode, customerInfo, paymentInfo, orderNumber, userId);
     
     return order;
   }
@@ -339,12 +441,15 @@ export class OrderService {
     promoId: string | null,
     promoCode: string | undefined,
     customerInfo: any,
-    orderNumber: string
+    paymentInfo: any,
+    orderNumber: string,
+    userId?: string
   ) {
     // Create order
     const newOrder = await prisma.order.create({
       data: {
         orderNumber,
+        userId: userId || undefined,
         guestToken: cart.guestToken,
         subtotal: Math.round(subtotal * 100) / 100,
         discount: Math.round(discount * 100) / 100,
@@ -352,6 +457,10 @@ export class OrderService {
         promoId,
         promoCode,
         customerInfo,
+        paymentInfo: paymentInfo || null,
+        transactionId: paymentInfo?.transactionId || null,
+        paymentMethod: paymentInfo?.method || null,
+        paymentStatus: paymentInfo ? 'COMPLETED' : 'PENDING', // If payment info provided, mark as completed
         items: {
           create: cart.items.map((item: any) => ({
             productId: item.productId,

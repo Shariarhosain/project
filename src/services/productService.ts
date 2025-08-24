@@ -48,7 +48,7 @@ export class ProductService {
     const where: any = {};
     
     if (category) {
-      where.category = category;
+      where.category = { contains: category, mode: 'insensitive' };
     }
     
     if (status) {
@@ -59,6 +59,7 @@ export class ProductService {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } },
+        { category: { contains: search, mode: 'insensitive' } },
       ];
     }
     

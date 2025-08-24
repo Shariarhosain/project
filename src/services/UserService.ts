@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { createError } from '../middleware/errorHandler';
 import { generateJWT } from '../utils/auth';
+import cartService from './cartService';
 
 const prisma = new PrismaClient();
 
@@ -290,6 +291,99 @@ export class UserService {
     }
   }
 
+  /**
+   * Register a new user and transfer guest cart items
+   */
+  async registerWithGuestCart(data: RegisterUserData, guestToken?: string) {
+    try {
+      // Check if user with email already exists
+      const existingUser = await prisma.user.findFirst({
+        where: { email: data.email },
+      });
+
+      if (existingUser) {
+        throw createError('User with this email already exists', 409);
+      }
+
+      // Hash password
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(data.password, saltRounds);
+
+      // Create user with default USER role
+      const user = await prisma.user.create({
+        data: {
+          email: data.email,
+          password: hashedPassword,
+          name: data.name,
+          role: 'USER', // Default role for new registrations
+        },
+      });
+
+      // Transfer guest cart if provided
+      let transferredCart = null;
+      if (guestToken) {
+        try {
+          transferredCart = await cartService.transferGuestCartToUser(guestToken, user.id);
+        } catch (error) {
+          console.warn('Failed to transfer guest cart:', error);
+          // Don't fail registration if cart transfer fails
+        }
+      }
+
+      // Generate JWT token
+      const token = generateJWT({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role.toLowerCase() as 'user' | 'admin',
+      });
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+
+      return {
+        message: 'User registered successfully' + (transferredCart ? ' and cart items transferred' : ''),
+        user: userWithoutPassword,
+        token,
+        cart: transferredCart,
+      };
+    } catch (error: any) {
+      if (error.statusCode) {
+        throw error;
+      }
+      console.error('Error during registration with cart transfer:', error);
+      throw createError('Registration failed', 500);
+    }
+  }
+
+  /**
+   * Login user and transfer guest cart if provided
+   */
+  async loginWithGuestCart(email: string, password: string, guestToken?: string) {
+    try {
+      const loginResult = await this.login(email, password);
+      
+      // Transfer guest cart if provided
+      let transferredCart = null;
+      if (guestToken && loginResult.user) {
+        try {
+          transferredCart = await cartService.transferGuestCartToUser(guestToken, loginResult.user.id);
+        } catch (error) {
+          console.warn('Failed to transfer guest cart during login:', error);
+          // Don't fail login if cart transfer fails
+        }
+      }
+
+      return {
+        ...loginResult,
+        cart: transferredCart,
+        message: loginResult.message + (transferredCart ? ' and cart items transferred' : ''),
+      };
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
   async loginUser(email: string) {
     try {
       const user = await prisma.user.findFirst({
@@ -321,3 +415,5 @@ export class UserService {
     }
   }
 }
+
+export default new UserService();

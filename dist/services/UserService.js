@@ -8,6 +8,7 @@ const client_1 = require("@prisma/client");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const errorHandler_1 = require("../middleware/errorHandler");
 const auth_1 = require("../utils/auth");
+const cartService_1 = __importDefault(require("./cartService"));
 const prisma = new client_1.PrismaClient();
 class UserService {
     async getUsers(params) {
@@ -221,6 +222,77 @@ class UserService {
             throw (0, errorHandler_1.createError)('Registration failed', 500);
         }
     }
+    async registerWithGuestCart(data, guestToken) {
+        try {
+            const existingUser = await prisma.user.findFirst({
+                where: { email: data.email },
+            });
+            if (existingUser) {
+                throw (0, errorHandler_1.createError)('User with this email already exists', 409);
+            }
+            const saltRounds = 10;
+            const hashedPassword = await bcrypt_1.default.hash(data.password, saltRounds);
+            const user = await prisma.user.create({
+                data: {
+                    email: data.email,
+                    password: hashedPassword,
+                    name: data.name,
+                    role: 'USER',
+                },
+            });
+            let transferredCart = null;
+            if (guestToken) {
+                try {
+                    transferredCart = await cartService_1.default.transferGuestCartToUser(guestToken, user.id);
+                }
+                catch (error) {
+                    console.warn('Failed to transfer guest cart:', error);
+                }
+            }
+            const token = (0, auth_1.generateJWT)({
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role.toLowerCase(),
+            });
+            const { password: _, ...userWithoutPassword } = user;
+            return {
+                message: 'User registered successfully' + (transferredCart ? ' and cart items transferred' : ''),
+                user: userWithoutPassword,
+                token,
+                cart: transferredCart,
+            };
+        }
+        catch (error) {
+            if (error.statusCode) {
+                throw error;
+            }
+            console.error('Error during registration with cart transfer:', error);
+            throw (0, errorHandler_1.createError)('Registration failed', 500);
+        }
+    }
+    async loginWithGuestCart(email, password, guestToken) {
+        try {
+            const loginResult = await this.login(email, password);
+            let transferredCart = null;
+            if (guestToken && loginResult.user) {
+                try {
+                    transferredCart = await cartService_1.default.transferGuestCartToUser(guestToken, loginResult.user.id);
+                }
+                catch (error) {
+                    console.warn('Failed to transfer guest cart during login:', error);
+                }
+            }
+            return {
+                ...loginResult,
+                cart: transferredCart,
+                message: loginResult.message + (transferredCart ? ' and cart items transferred' : ''),
+            };
+        }
+        catch (error) {
+            throw error;
+        }
+    }
     async loginUser(email) {
         try {
             const user = await prisma.user.findFirst({
@@ -250,4 +322,5 @@ class UserService {
     }
 }
 exports.UserService = UserService;
+exports.default = new UserService();
 //# sourceMappingURL=UserService.js.map

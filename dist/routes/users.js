@@ -78,18 +78,18 @@ router.get('/', auth_1.authenticateToken, auth_1.requireAdmin, async (req, res, 
         next(error);
     }
 });
-router.get('/:id', (0, validation_1.validate)(getUserSchema), async (req, res, next) => {
+router.get('/profile', auth_1.authenticateToken, auth_1.requireUser, async (req, res, next) => {
     try {
-        const user = await userService.getUserById(req.params.id);
+        const user = await userService.getUserById(req.user.id);
         res.json(user);
     }
     catch (error) {
         next(error);
     }
 });
-router.get('/profile', auth_1.authenticateToken, auth_1.requireUser, async (req, res, next) => {
+router.get('/:id', (0, validation_1.validate)(getUserSchema), async (req, res, next) => {
     try {
-        const user = await userService.getUserById(req.user.id);
+        const user = await userService.getUserById(req.params.id);
         res.json(user);
     }
     catch (error) {

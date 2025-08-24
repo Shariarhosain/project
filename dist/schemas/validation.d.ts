@@ -249,7 +249,7 @@ export declare const applyPromoSchema: z.ZodObject<{
     };
 }>;
 export declare const createOrderSchema: z.ZodObject<{
-    body: z.ZodObject<{
+    body: z.ZodEffects<z.ZodObject<{
         customerInfo: z.ZodObject<{
             name: z.ZodString;
             email: z.ZodString;
@@ -297,6 +297,8 @@ export declare const createOrderSchema: z.ZodObject<{
             phone?: string | undefined;
         }>;
         promoCode: z.ZodOptional<z.ZodString>;
+        createAccount: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+        password: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
         customerInfo: {
             email: string;
@@ -310,6 +312,8 @@ export declare const createOrderSchema: z.ZodObject<{
             };
             phone?: string | undefined;
         };
+        createAccount: boolean;
+        password?: string | undefined;
         promoCode?: string | undefined;
     }, {
         customerInfo: {
@@ -324,7 +328,41 @@ export declare const createOrderSchema: z.ZodObject<{
             };
             phone?: string | undefined;
         };
+        password?: string | undefined;
         promoCode?: string | undefined;
+        createAccount?: boolean | undefined;
+    }>, {
+        customerInfo: {
+            email: string;
+            name: string;
+            address: {
+                street: string;
+                city: string;
+                country: string;
+                state: string;
+                zipCode: string;
+            };
+            phone?: string | undefined;
+        };
+        createAccount: boolean;
+        password?: string | undefined;
+        promoCode?: string | undefined;
+    }, {
+        customerInfo: {
+            email: string;
+            name: string;
+            address: {
+                street: string;
+                city: string;
+                country: string;
+                state: string;
+                zipCode: string;
+            };
+            phone?: string | undefined;
+        };
+        password?: string | undefined;
+        promoCode?: string | undefined;
+        createAccount?: boolean | undefined;
     }>;
 }, "strip", z.ZodTypeAny, {
     body: {
@@ -340,6 +378,8 @@ export declare const createOrderSchema: z.ZodObject<{
             };
             phone?: string | undefined;
         };
+        createAccount: boolean;
+        password?: string | undefined;
         promoCode?: string | undefined;
     };
 }, {
@@ -356,7 +396,9 @@ export declare const createOrderSchema: z.ZodObject<{
             };
             phone?: string | undefined;
         };
+        password?: string | undefined;
         promoCode?: string | undefined;
+        createAccount?: boolean | undefined;
     };
 }>;
 export declare const paginationSchema: z.ZodObject<{
@@ -370,24 +412,42 @@ export declare const paginationSchema: z.ZodObject<{
     limit?: string | undefined;
 }>;
 export declare const productQuerySchema: z.ZodObject<{
-    category: z.ZodOptional<z.ZodString>;
-    status: z.ZodOptional<z.ZodEnum<["ACTIVE", "INACTIVE", "DISCONTINUED"]>>;
-    search: z.ZodOptional<z.ZodString>;
-} & {
-    page: z.ZodEffects<z.ZodOptional<z.ZodString>, number, string | undefined>;
-    limit: z.ZodEffects<z.ZodOptional<z.ZodString>, number, string | undefined>;
+    query: z.ZodObject<{
+        category: z.ZodOptional<z.ZodString>;
+        status: z.ZodOptional<z.ZodEnum<["ACTIVE", "INACTIVE", "DISCONTINUED"]>>;
+        search: z.ZodOptional<z.ZodString>;
+    } & {
+        page: z.ZodEffects<z.ZodOptional<z.ZodString>, number, string | undefined>;
+        limit: z.ZodEffects<z.ZodOptional<z.ZodString>, number, string | undefined>;
+    }, "strip", z.ZodTypeAny, {
+        page: number;
+        limit: number;
+        category?: string | undefined;
+        status?: "ACTIVE" | "INACTIVE" | "DISCONTINUED" | undefined;
+        search?: string | undefined;
+    }, {
+        category?: string | undefined;
+        status?: "ACTIVE" | "INACTIVE" | "DISCONTINUED" | undefined;
+        page?: string | undefined;
+        limit?: string | undefined;
+        search?: string | undefined;
+    }>;
 }, "strip", z.ZodTypeAny, {
-    page: number;
-    limit: number;
-    category?: string | undefined;
-    status?: "ACTIVE" | "INACTIVE" | "DISCONTINUED" | undefined;
-    search?: string | undefined;
+    query: {
+        page: number;
+        limit: number;
+        category?: string | undefined;
+        status?: "ACTIVE" | "INACTIVE" | "DISCONTINUED" | undefined;
+        search?: string | undefined;
+    };
 }, {
-    category?: string | undefined;
-    status?: "ACTIVE" | "INACTIVE" | "DISCONTINUED" | undefined;
-    page?: string | undefined;
-    limit?: string | undefined;
-    search?: string | undefined;
+    query: {
+        category?: string | undefined;
+        status?: "ACTIVE" | "INACTIVE" | "DISCONTINUED" | undefined;
+        page?: string | undefined;
+        limit?: string | undefined;
+        search?: string | undefined;
+    };
 }>;
 export type CreateProductInput = z.infer<typeof createProductSchema>['body'];
 export type UpdateProductInput = z.infer<typeof updateProductSchema>['body'];
@@ -396,5 +456,5 @@ export type UpdateCartItemInput = z.infer<typeof updateCartItemSchema>['body'];
 export type CreatePromoInput = z.infer<typeof createPromoSchema>['body'];
 export type ApplyPromoInput = z.infer<typeof applyPromoSchema>['body'];
 export type CreateOrderInput = z.infer<typeof createOrderSchema>['body'];
-export type ProductQueryInput = z.infer<typeof productQuerySchema>;
+export type ProductQueryInput = z.infer<typeof productQuerySchema>['query'];
 //# sourceMappingURL=validation.d.ts.map

@@ -7,7 +7,62 @@ exports.OrderService = void 0;
 const prisma_1 = require("../lib/prisma");
 const errorHandler_1 = require("../middleware/errorHandler");
 const promoService_1 = __importDefault(require("./promoService"));
+const cartService_1 = __importDefault(require("./cartService"));
+const UserService_1 = __importDefault(require("./UserService"));
 class OrderService {
+    async createOrderForGuestOrUser(guestTokenOrUserId, data, isUser = false) {
+        const { customerInfo, promoCode, createAccount, password } = data;
+        const cart = await cartService_1.default.getOrCreateCart(isUser ? undefined : guestTokenOrUserId, isUser ? guestTokenOrUserId : undefined);
+        if (!cart || cart.items.length === 0) {
+            throw (0, errorHandler_1.createError)(isUser
+                ? 'Your cart is empty. Please add items to your cart before creating an order.'
+                : 'Cart is empty. Please add items to your cart before creating an order. Use the guest token from the X-Guest-Token header for subsequent requests.', 400);
+        }
+        let userId = isUser ? guestTokenOrUserId : undefined;
+        let newUserData = null;
+        if (!isUser && createAccount && password) {
+            try {
+                const existingUser = await prisma_1.prisma.user.findFirst({
+                    where: { email: customerInfo.email }
+                });
+                if (existingUser) {
+                    throw (0, errorHandler_1.createError)('An account with this email already exists. Please login instead.', 409);
+                }
+                const registerResult = await UserService_1.default.registerWithGuestCart({
+                    email: customerInfo.email,
+                    password: password,
+                    name: customerInfo.name
+                }, guestTokenOrUserId);
+                userId = registerResult.user.id;
+                newUserData = {
+                    user: registerResult.user,
+                    token: registerResult.token
+                };
+            }
+            catch (error) {
+                console.error('Failed to create user account during order:', error);
+                if (error.statusCode === 409) {
+                    throw error;
+                }
+            }
+        }
+        const order = await this.processOrder(cart, data, userId);
+        return {
+            ...order,
+            ...(newUserData && {
+                accountCreated: true,
+                ...newUserData
+            })
+        };
+    }
+    async createOrderForUser(userId, data) {
+        const { customerInfo, promoCode } = data;
+        const cart = await cartService_1.default.getOrCreateCart(undefined, userId);
+        if (!cart || cart.items.length === 0) {
+            throw (0, errorHandler_1.createError)('Cart is empty', 400);
+        }
+        return await this.processOrder(cart, data, userId);
+    }
     async createOrder(userIdOrGuestToken, data, isUser = false) {
         const { customerInfo, promoCode } = data;
         const cart = await prisma_1.prisma.cart.findFirst({
@@ -29,6 +84,10 @@ class OrderService {
         if (cart.items.length === 0) {
             throw (0, errorHandler_1.createError)('Cart is empty', 400);
         }
+        return await this.processOrder(cart, data, isUser ? userIdOrGuestToken : undefined);
+    }
+    async processOrder(cart, data, userId) {
+        const { customerInfo, promoCode } = data;
         for (const item of cart.items) {
             if (item.variant.inventory < item.quantity) {
                 throw (0, errorHandler_1.createError)(`Insufficient inventory for ${item.product.name} - ${item.variant.name}. Only ${item.variant.inventory} available.`, 400);
@@ -52,7 +111,7 @@ class OrderService {
         }
         const total = subtotal - discount;
         const orderNumber = await this.generateOrderNumber();
-        const order = await this.createOrderWithoutTransaction(cart, subtotal, discount, total, promo, promoId, promoCode, customerInfo, orderNumber);
+        const order = await this.createOrderWithoutTransaction(cart, subtotal, discount, total, promo, promoId, promoCode, customerInfo, orderNumber, userId);
         return order;
     }
     async getOrders(params = {}) {
@@ -278,10 +337,11 @@ class OrderService {
         const sequence = (todayOrderCount + 1).toString().padStart(4, '0');
         return `ORD${year}${month}${day}${sequence}`;
     }
-    async createOrderWithoutTransaction(cart, subtotal, discount, total, promo, promoId, promoCode, customerInfo, orderNumber) {
+    async createOrderWithoutTransaction(cart, subtotal, discount, total, promo, promoId, promoCode, customerInfo, orderNumber, userId) {
         const newOrder = await prisma_1.prisma.order.create({
             data: {
                 orderNumber,
+                userId: userId || undefined,
                 guestToken: cart.guestToken,
                 subtotal: Math.round(subtotal * 100) / 100,
                 discount: Math.round(discount * 100) / 100,

@@ -74,6 +74,16 @@ exports.createOrderSchema = zod_1.z.object({
             }),
         }),
         promoCode: zod_1.z.string().optional(),
+        createAccount: zod_1.z.boolean().optional().default(false),
+        password: zod_1.z.string().min(6, 'Password must be at least 6 characters').optional(),
+    }).refine((data) => {
+        if (data.createAccount && !data.password) {
+            return false;
+        }
+        return true;
+    }, {
+        message: 'Password is required when creating an account',
+        path: ['password']
     }),
 });
 exports.paginationSchema = zod_1.z.object({
@@ -81,8 +91,10 @@ exports.paginationSchema = zod_1.z.object({
     limit: zod_1.z.string().optional().transform(val => val ? parseInt(val) : 10),
 });
 exports.productQuerySchema = zod_1.z.object({
-    category: zod_1.z.string().optional(),
-    status: zod_1.z.enum(['ACTIVE', 'INACTIVE', 'DISCONTINUED']).optional(),
-    search: zod_1.z.string().optional(),
-}).merge(exports.paginationSchema);
+    query: zod_1.z.object({
+        category: zod_1.z.string().optional(),
+        status: zod_1.z.enum(['ACTIVE', 'INACTIVE', 'DISCONTINUED']).optional(),
+        search: zod_1.z.string().optional(),
+    }).merge(exports.paginationSchema),
+});
 //# sourceMappingURL=validation.js.map

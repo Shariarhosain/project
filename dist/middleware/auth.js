@@ -1,8 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.optionalAuth = exports.requireUser = exports.requireAdmin = exports.authenticateToken = void 0;
+exports.ensureGuestToken = exports.guestOrAuth = exports.optionalAuth = exports.requireUser = exports.requireAdmin = exports.authenticateToken = void 0;
 const auth_1 = require("../utils/auth");
 const errorHandler_1 = require("./errorHandler");
+const isGuestToken = (token) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(token);
+};
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -53,4 +57,36 @@ const optionalAuth = (req, res, next) => {
     next();
 };
 exports.optionalAuth = optionalAuth;
+const guestOrAuth = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        if (isGuestToken(token)) {
+            req.guestToken = token;
+            req.isGuest = true;
+            return next();
+        }
+        try {
+            const decoded = (0, auth_1.verifyJWT)(token);
+            req.user = decoded;
+            return next();
+        }
+        catch (error) {
+        }
+    }
+    req.isGuest = true;
+    next();
+};
+exports.guestOrAuth = guestOrAuth;
+const ensureGuestToken = (req, res, next) => {
+    if (req.user) {
+        return next();
+    }
+    if (!req.guestToken) {
+        req.guestToken = (0, auth_1.generateGuestToken)();
+        res.setHeader('X-Guest-Token', req.guestToken);
+    }
+    next();
+};
+exports.ensureGuestToken = ensureGuestToken;
 //# sourceMappingURL=auth.js.map

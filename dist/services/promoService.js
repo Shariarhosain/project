@@ -1,8 +1,12 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PromoService = void 0;
 const prisma_1 = require("../lib/prisma");
 const errorHandler_1 = require("../middleware/errorHandler");
+const cartService_1 = __importDefault(require("./cartService"));
 class PromoService {
     async createPromo(data) {
         const { validFrom, validTo, ...promoData } = data;
@@ -110,34 +114,10 @@ class PromoService {
         }
         let cart;
         if (userId) {
-            cart = await prisma_1.prisma.cart.findFirst({
-                where: { userId },
-                include: {
-                    items: {
-                        include: {
-                            variant: true,
-                        },
-                    },
-                },
-            });
-        }
-        else if (guestToken) {
-            cart = await prisma_1.prisma.cart.findUnique({
-                where: { guestToken },
-                include: {
-                    items: {
-                        include: {
-                            variant: true,
-                        },
-                    },
-                },
-            });
+            cart = await cartService_1.default.getOrCreateCart(undefined, userId);
         }
         else {
-            throw (0, errorHandler_1.createError)('Either guest token or user authentication required', 400);
-        }
-        if (!cart) {
-            throw (0, errorHandler_1.createError)('Cart not found', 404);
+            cart = await cartService_1.default.getOrCreateCart(guestToken);
         }
         if (cart.items.length === 0) {
             throw (0, errorHandler_1.createError)('Cart is empty', 400);
@@ -147,6 +127,7 @@ class PromoService {
         }, 0);
         const promo = await this.validatePromo(promoCode, cartSubtotal);
         const discount = await this.calculateDiscount(promo, cartSubtotal);
+        const cartWithPromo = await cartService_1.default.applyPromoToCart(guestToken, userId, promo.id, promo.code, discount);
         return {
             message: 'Promo code applied successfully',
             promo: {
@@ -161,7 +142,25 @@ class PromoService {
                 amount: discount,
                 originalSubtotal: Math.round(cartSubtotal * 100) / 100,
                 finalSubtotal: Math.round((cartSubtotal - discount) * 100) / 100,
-            }
+            },
+            cart: cartWithPromo
+        };
+    }
+    async removePromoFromCart(guestToken, userId) {
+        let cart;
+        if (userId) {
+            cart = await cartService_1.default.getOrCreateCart(undefined, userId);
+        }
+        else {
+            cart = await cartService_1.default.getOrCreateCart(guestToken);
+        }
+        if (!cart.promoCode) {
+            throw (0, errorHandler_1.createError)('No promo code applied to cart', 400);
+        }
+        const updatedCart = await cartService_1.default.removePromoFromCart(guestToken, userId);
+        return {
+            message: 'Promo code removed successfully',
+            cart: updatedCart
         };
     }
     async updatePromo(id, data) {

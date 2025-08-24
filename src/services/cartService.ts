@@ -4,6 +4,94 @@ import { createError } from '../middleware/errorHandler';
 import { generateGuestToken } from '../utils/auth';
 
 export class CartService {
+  /**
+   * Transfer guest cart items to user account during registration/login
+   */
+  async transferGuestCartToUser(guestToken: string, userId: string) {
+    // Find the guest cart
+    const guestCart = await prisma.cart.findUnique({
+      where: { guestToken },
+      include: {
+        items: {
+          include: {
+            product: true,
+            variant: true,
+          },
+        },
+      },
+    });
+
+    if (!guestCart || guestCart.items.length === 0) {
+      return null; // No guest cart or empty cart
+    }
+
+    // Check if user already has a cart
+    let userCart = await prisma.cart.findFirst({
+      where: { userId },
+      include: {
+        items: {
+          include: {
+            product: true,
+            variant: true,
+          },
+        },
+      },
+    });
+
+    // If user doesn't have a cart, convert the guest cart to user cart
+    if (!userCart) {
+      userCart = await prisma.cart.update({
+        where: { id: guestCart.id },
+        data: {
+          userId,
+          guestToken: null, // Remove guest token
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+              variant: true,
+            },
+          },
+        },
+      });
+      return userCart;
+    }
+
+    // If user already has a cart, merge items from guest cart
+    for (const guestItem of guestCart.items) {
+      // Check if this variant already exists in user cart
+      const existingItem = userCart.items.find(
+        item => item.variantId === guestItem.variantId
+      );
+
+      if (existingItem) {
+        // Update quantity of existing item
+        await prisma.cartItem.update({
+          where: { id: existingItem.id },
+          data: { quantity: existingItem.quantity + guestItem.quantity },
+        });
+      } else {
+        // Add new item to user cart
+        await prisma.cartItem.create({
+          data: {
+            cartId: userCart.id,
+            productId: guestItem.productId,
+            variantId: guestItem.variantId,
+            quantity: guestItem.quantity,
+          },
+        });
+      }
+    }
+
+    // Delete the guest cart after transfer
+    await prisma.cart.delete({
+      where: { id: guestCart.id },
+    });
+
+    // Return updated user cart
+    return await this.getOrCreateCart(undefined, userId);
+  }
   async getOrCreateCart(guestToken?: string, userId?: string) {
     // If guest token provided, try to find existing cart
     if (guestToken) {
@@ -16,11 +104,21 @@ export class CartService {
               variant: true,
             },
           },
+          promo: true,
         },
       });
       
       if (existingCart && existingCart.expiresAt > new Date()) {
-        return existingCart;
+        // Calculate totals for existing cart
+        const totals = await this.calculateCartTotals(existingCart.id);
+        const finalSubtotal = totals.subtotal - existingCart.discount;
+        
+        return {
+          ...existingCart,
+          ...totals,
+          finalSubtotal: Math.round(finalSubtotal * 100) / 100,
+          discountApplied: existingCart.discount > 0,
+        };
       }
       
       // If cart doesn't exist or expired, create new cart with the SAME guest token
@@ -28,7 +126,7 @@ export class CartService {
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 30); // Cart expires in 30 days
 
-        return await prisma.cart.create({
+        const newCart = await prisma.cart.create({
           data: {
             guestToken, // Use the provided guest token, don't generate new one
             userId,
@@ -41,8 +139,20 @@ export class CartService {
                 variant: true,
               },
             },
+            promo: true,
           },
         });
+
+        // Calculate totals for new cart
+        const totals = await this.calculateCartTotals(newCart.id);
+        const finalSubtotal = totals.subtotal - newCart.discount;
+        
+        return {
+          ...newCart,
+          ...totals,
+          finalSubtotal: Math.round(finalSubtotal * 100) / 100,
+          discountApplied: newCart.discount > 0,
+        };
       }
     }
     
@@ -51,7 +161,7 @@ export class CartService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30); // Cart expires in 30 days
 
-    return await prisma.cart.create({
+    const newCart = await prisma.cart.create({
       data: {
         guestToken: newGuestToken,
         userId,
@@ -64,8 +174,20 @@ export class CartService {
             variant: true,
           },
         },
+        promo: true,
       },
     });
+
+    // Calculate totals for new cart
+    const totals = await this.calculateCartTotals(newCart.id);
+    const finalSubtotal = totals.subtotal - newCart.discount;
+    
+    return {
+      ...newCart,
+      ...totals,
+      finalSubtotal: Math.round(finalSubtotal * 100) / 100,
+      discountApplied: newCart.discount > 0,
+    };
   }
   
   async getCart(guestToken: string) {
@@ -95,6 +217,7 @@ export class CartService {
             },
           },
         },
+        promo: true,
       },
     });
     
@@ -109,9 +232,14 @@ export class CartService {
     // Calculate totals using aggregation
     const totals = await this.calculateCartTotals(cart.id);
     
+    // Calculate final total with discount
+    const finalSubtotal = totals.subtotal - cart.discount;
+    
     return {
       ...cart,
       ...totals,
+      finalSubtotal: Math.round(finalSubtotal * 100) / 100,
+      discountApplied: cart.discount > 0,
     };
   }
   
@@ -278,6 +406,125 @@ export class CartService {
     return {
       itemCount: result._sum.quantity || 0,
       subtotal: Math.round(subtotal * 100) / 100, // Round to 2 decimal places
+    };
+  }
+
+  async applyPromoToCart(guestToken?: string, userId?: string, promoId?: string, promoCode?: string, discount?: number) {
+    let cart;
+
+    if (userId) {
+      cart = await prisma.cart.findFirst({
+        where: { userId },
+      });
+    } else if (guestToken) {
+      cart = await prisma.cart.findUnique({
+        where: { guestToken },
+      });
+    }
+
+    if (!cart) {
+      throw createError('Cart not found', 404);
+    }
+
+    await prisma.cart.update({
+      where: { id: cart.id },
+      data: {
+        promoId,
+        promoCode,
+        discount,
+      },
+    });
+
+    if (userId) {
+      return await this.getUserCart(userId);
+    } else {
+      return await this.getCart(guestToken!);
+    }
+  }
+
+  async removePromoFromCart(guestToken?: string, userId?: string) {
+    let cart;
+
+    if (userId) {
+      cart = await prisma.cart.findFirst({
+        where: { userId },
+      });
+    } else if (guestToken) {
+      cart = await prisma.cart.findUnique({
+        where: { guestToken },
+      });
+    }
+
+    if (!cart) {
+      throw createError('Cart not found', 404);
+    }
+
+    await prisma.cart.update({
+      where: { id: cart.id },
+      data: {
+        promoId: null,
+        promoCode: null,
+        discount: 0,
+      },
+    });
+
+    if (userId) {
+      return await this.getUserCart(userId);
+    } else {
+      return await this.getCart(guestToken!);
+    }
+  }
+
+  async getUserCart(userId: string) {
+    const cart = await prisma.cart.findFirst({
+      where: { userId },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                images: true,
+                status: true,
+              },
+            },
+            variant: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                price: true,
+                inventory: true,
+                attributes: true,
+              },
+            },
+          },
+        },
+        promo: true,
+      },
+    });
+
+    if (!cart) {
+      throw createError('Cart not found', 404);
+    }
+
+    if (cart.expiresAt < new Date()) {
+      throw createError('Cart has expired', 410);
+    }
+
+    // Calculate totals using aggregation
+    const totals = await this.calculateCartTotals(cart.id);
+    
+    // Calculate final total with discount
+    const finalSubtotal = totals.subtotal - cart.discount;
+    
+    return {
+      ...cart,
+      ...totals,
+      finalSubtotal: Math.round(finalSubtotal * 100) / 100,
+      discountApplied: cart.discount > 0,
     };
   }
 }

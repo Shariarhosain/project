@@ -92,6 +92,123 @@ export declare class PromoService {
             originalSubtotal: number;
             finalSubtotal: number;
         };
+        cart: {
+            finalSubtotal: number;
+            discountApplied: boolean;
+            itemCount: number;
+            subtotal: number;
+            items: ({
+                product: {
+                    id: string;
+                    name: string;
+                    slug: string;
+                    status: import(".prisma/client").$Enums.ProductStatus;
+                    images: string[];
+                };
+                variant: {
+                    id: string;
+                    name: string;
+                    sku: string;
+                    price: number;
+                    inventory: number;
+                    attributes: import("@prisma/client/runtime/library").JsonValue;
+                };
+            } & {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                quantity: number;
+                variantId: string;
+                productId: string;
+                cartId: string;
+            })[];
+            promo: {
+                id: string;
+                name: string;
+                createdAt: Date;
+                updatedAt: Date;
+                status: import(".prisma/client").$Enums.PromoStatus;
+                code: string;
+                type: import(".prisma/client").$Enums.PromoType;
+                value: number;
+                description: string | null;
+                minAmount: number | null;
+                maxDiscount: number | null;
+                usageLimit: number | null;
+                validFrom: Date;
+                validTo: Date;
+                usageCount: number;
+            } | null;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            promoCode: string | null;
+            guestToken: string | null;
+            userId: string | null;
+            promoId: string | null;
+            discount: number;
+            expiresAt: Date;
+        };
+    }>;
+    removePromoFromCart(guestToken?: string, userId?: string): Promise<{
+        message: string;
+        cart: {
+            finalSubtotal: number;
+            discountApplied: boolean;
+            itemCount: number;
+            subtotal: number;
+            items: ({
+                product: {
+                    id: string;
+                    name: string;
+                    slug: string;
+                    status: import(".prisma/client").$Enums.ProductStatus;
+                    images: string[];
+                };
+                variant: {
+                    id: string;
+                    name: string;
+                    sku: string;
+                    price: number;
+                    inventory: number;
+                    attributes: import("@prisma/client/runtime/library").JsonValue;
+                };
+            } & {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                quantity: number;
+                variantId: string;
+                productId: string;
+                cartId: string;
+            })[];
+            promo: {
+                id: string;
+                name: string;
+                createdAt: Date;
+                updatedAt: Date;
+                status: import(".prisma/client").$Enums.PromoStatus;
+                code: string;
+                type: import(".prisma/client").$Enums.PromoType;
+                value: number;
+                description: string | null;
+                minAmount: number | null;
+                maxDiscount: number | null;
+                usageLimit: number | null;
+                validFrom: Date;
+                validTo: Date;
+                usageCount: number;
+            } | null;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            promoCode: string | null;
+            guestToken: string | null;
+            userId: string | null;
+            promoId: string | null;
+            discount: number;
+            expiresAt: Date;
+        };
     }>;
     updatePromo(id: string, data: Partial<CreatePromoInput>): Promise<{
         id: string;

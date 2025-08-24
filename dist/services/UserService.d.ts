@@ -86,6 +86,118 @@ export declare class UserService {
             updatedAt: Date;
         };
     }>;
+    registerWithGuestCart(data: RegisterUserData, guestToken?: string): Promise<{
+        message: string;
+        user: {
+            id: string;
+            email: string;
+            name: string;
+            role: import(".prisma/client").$Enums.UserRole;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+        token: string;
+        cart: ({
+            items: ({
+                product: {
+                    id: string;
+                    name: string;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    slug: string;
+                    category: string;
+                    status: import(".prisma/client").$Enums.ProductStatus;
+                    description: string | null;
+                    images: string[];
+                };
+                variant: {
+                    id: string;
+                    name: string;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    sku: string;
+                    price: number;
+                    inventory: number;
+                    attributes: import("@prisma/client/runtime/library").JsonValue | null;
+                    productId: string;
+                };
+            } & {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                quantity: number;
+                variantId: string;
+                productId: string;
+                cartId: string;
+            })[];
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            promoCode: string | null;
+            guestToken: string | null;
+            userId: string | null;
+            promoId: string | null;
+            discount: number;
+            expiresAt: Date;
+        }) | null;
+    }>;
+    loginWithGuestCart(email: string, password: string, guestToken?: string): Promise<{
+        cart: ({
+            items: ({
+                product: {
+                    id: string;
+                    name: string;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    slug: string;
+                    category: string;
+                    status: import(".prisma/client").$Enums.ProductStatus;
+                    description: string | null;
+                    images: string[];
+                };
+                variant: {
+                    id: string;
+                    name: string;
+                    createdAt: Date;
+                    updatedAt: Date;
+                    sku: string;
+                    price: number;
+                    inventory: number;
+                    attributes: import("@prisma/client/runtime/library").JsonValue | null;
+                    productId: string;
+                };
+            } & {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                quantity: number;
+                variantId: string;
+                productId: string;
+                cartId: string;
+            })[];
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            promoCode: string | null;
+            guestToken: string | null;
+            userId: string | null;
+            promoId: string | null;
+            discount: number;
+            expiresAt: Date;
+        }) | null;
+        message: string;
+        token: string;
+        user: {
+            id: string;
+            email: string;
+            name: string;
+            role: import(".prisma/client").$Enums.UserRole;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+    }>;
     loginUser(email: string): Promise<{
         token: string;
         user: {
@@ -99,5 +211,6 @@ export declare class UserService {
         };
     }>;
 }
-export {};
+declare const _default: UserService;
+export default _default;
 //# sourceMappingURL=UserService.d.ts.map

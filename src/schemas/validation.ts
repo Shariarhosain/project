@@ -81,7 +81,27 @@ export const createOrderSchema = z.object({
         country: z.string().min(1, 'Country is required'),
       }),
     }),
+    paymentInfo: z.object({
+      method: z.enum(['credit_card', 'debit_card', 'paypal', 'stripe', 'apple_pay', 'google_pay', 'bank_transfer', 'cash_on_delivery']),
+      transactionId: z.string().min(1, 'Transaction ID is required'),
+      cardLastFour: z.string().length(4).optional(), // Last 4 digits of card
+      cardBrand: z.string().optional(), // e.g., "visa", "mastercard"
+      paymentGateway: z.string().optional(), // e.g., "stripe", "paypal"
+      gatewayResponse: z.record(z.any()).optional(), // Raw response from payment gateway
+    }).optional(),
     promoCode: z.string().optional(),
+    // Optional account creation for guests
+    createAccount: z.boolean().optional().default(false),
+    password: z.string().min(6, 'Password must be at least 6 characters').optional(),
+  }).refine((data) => {
+    // If createAccount is true, password must be provided
+    if (data.createAccount && !data.password) {
+      return false;
+    }
+    return true;
+  }, {
+    message: 'Password is required when creating an account',
+    path: ['password']
   }),
 });
 

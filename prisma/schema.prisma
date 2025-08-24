@@ -50,12 +50,16 @@ model Cart {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   guestToken  String?  @unique
   userId      String?  @db.ObjectId
+  promoId     String?  @db.ObjectId
+  promoCode   String?
+  discount    Float    @default(0)
   expiresAt   DateTime
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   items       CartItem[]
   user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promo       Promo?   @relation(fields: [promoId], references: [id])
 
   @@map("carts")
 }
@@ -94,6 +98,7 @@ model Promo {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
+  carts       Cart[]
   orders      Order[]
 
   @@map("promos")
@@ -111,6 +116,11 @@ model Order {
   promoId       String?     @db.ObjectId
   promoCode     String?
   customerInfo  Json        // name, email, address, etc.
+  paymentInfo   Json?       // payment method, transaction details, etc.
+  transactionId String?     // payment gateway transaction ID
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentMethod String?     // e.g., "credit_card", "paypal", "stripe", etc.
+  notes         String?     // optional notes about the order or status changes
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -183,6 +193,15 @@ enum OrderStatus {
   PROCESSING
   SHIPPED
   DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
   CANCELLED
   REFUNDED
 }

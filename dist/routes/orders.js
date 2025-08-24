@@ -26,11 +26,20 @@ router.get('/', auth_1.authenticateToken, auth_1.requireUser, async (req, res, n
         next(error);
     }
 });
-router.post('/', auth_1.authenticateToken, auth_1.requireUser, (0, validation_1.validate)(validation_2.createOrderSchema), async (req, res, next) => {
+router.post('/', auth_1.guestOrAuth, auth_1.ensureGuestToken, (0, validation_1.validate)(validation_2.createOrderSchema), async (req, res, next) => {
     try {
-        const user = req.user;
-        const order = await orderService_1.default.createOrder(user.id, req.body, true);
-        res.status(201).json({ message: 'Order created successfully', ...order });
+        const { user, guestToken, isGuest } = req;
+        const isUserOrder = !!user;
+        const userIdOrGuestToken = isUserOrder ? user.id : guestToken;
+        const order = await orderService_1.default.createOrderForGuestOrUser(userIdOrGuestToken, req.body, isUserOrder);
+        let message = 'Order created successfully';
+        if (order.accountCreated) {
+            message += ' and account created';
+        }
+        res.status(201).json({
+            message,
+            ...order
+        });
     }
     catch (error) {
         next(error);

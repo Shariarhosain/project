@@ -7,13 +7,12 @@ const express_1 = __importDefault(require("express"));
 const promoService_1 = __importDefault(require("../services/promoService"));
 const validation_1 = require("../middleware/validation");
 const validation_2 = require("../schemas/validation");
-const auth_1 = require("../utils/auth");
-const auth_2 = require("../middleware/auth");
-const errorHandler_1 = require("../middleware/errorHandler");
+const auth_1 = require("../middleware/auth");
 const router = express_1.default.Router();
-router.get('/', auth_2.optionalAuth, (0, validation_1.validate)(validation_2.paginationSchema), async (req, res, next) => {
+router.get('/', auth_1.optionalAuth, (0, validation_1.validate)(validation_2.paginationSchema), async (req, res, next) => {
     try {
-        const { page, limit } = req.query;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
         const isAdmin = req.user && req.user.role === 'admin';
         const result = await promoService_1.default.getPromos(page, limit, isAdmin);
         res.json(result);
@@ -22,7 +21,7 @@ router.get('/', auth_2.optionalAuth, (0, validation_1.validate)(validation_2.pag
         next(error);
     }
 });
-router.post('/apply', auth_2.optionalAuth, (0, validation_1.validate)(validation_2.applyPromoSchema), async (req, res, next) => {
+router.post('/apply', auth_1.guestOrAuth, auth_1.ensureGuestToken, (0, validation_1.validate)(validation_2.applyPromoSchema), async (req, res, next) => {
     try {
         let guestToken;
         let userId;
@@ -30,7 +29,7 @@ router.post('/apply', auth_2.optionalAuth, (0, validation_1.validate)(validation
             userId = req.user.id;
         }
         else {
-            guestToken = (0, auth_1.extractGuestToken)(req.headers.authorization) || undefined;
+            guestToken = req.guestToken;
         }
         const result = await promoService_1.default.applyPromoToCart(guestToken, req.body.promoCode, userId);
         res.json(result);
@@ -39,7 +38,24 @@ router.post('/apply', auth_2.optionalAuth, (0, validation_1.validate)(validation
         next(error);
     }
 });
-router.post('/', auth_2.authenticateToken, auth_2.requireAdmin, (0, validation_1.validate)(validation_2.createPromoSchema), async (req, res, next) => {
+router.delete('/remove', auth_1.guestOrAuth, auth_1.ensureGuestToken, async (req, res, next) => {
+    try {
+        let guestToken;
+        let userId;
+        if (req.user) {
+            userId = req.user.id;
+        }
+        else {
+            guestToken = req.guestToken;
+        }
+        const result = await promoService_1.default.removePromoFromCart(guestToken, userId);
+        res.json(result);
+    }
+    catch (error) {
+        next(error);
+    }
+});
+router.post('/', auth_1.authenticateToken, auth_1.requireAdmin, (0, validation_1.validate)(validation_2.createPromoSchema), async (req, res, next) => {
     try {
         const promo = await promoService_1.default.createPromo(req.body);
         res.status(201).json(promo);
@@ -48,7 +64,7 @@ router.post('/', auth_2.authenticateToken, auth_2.requireAdmin, (0, validation_1
         next(error);
     }
 });
-router.get('/:id', auth_2.authenticateToken, auth_2.requireAdmin, async (req, res, next) => {
+router.get('/:id', auth_1.authenticateToken, auth_1.requireAdmin, async (req, res, next) => {
     try {
         const promo = await promoService_1.default.getPromoById(req.params.id);
         res.json(promo);
@@ -57,20 +73,7 @@ router.get('/:id', auth_2.authenticateToken, auth_2.requireAdmin, async (req, re
         next(error);
     }
 });
-router.post('/apply', (0, validation_1.validate)(validation_2.applyPromoSchema), async (req, res, next) => {
-    try {
-        const guestToken = (0, auth_1.extractGuestToken)(req.headers.authorization);
-        if (!guestToken) {
-            throw (0, errorHandler_1.createError)('Guest token is required', 401);
-        }
-        const result = await promoService_1.default.applyPromoToCart(guestToken, req.body.promoCode);
-        res.json(result);
-    }
-    catch (error) {
-        next(error);
-    }
-});
-router.put('/:id', auth_2.authenticateToken, auth_2.requireAdmin, async (req, res, next) => {
+router.put('/:id', auth_1.authenticateToken, auth_1.requireAdmin, async (req, res, next) => {
     try {
         const promo = await promoService_1.default.updatePromo(req.params.id, req.body);
         res.json(promo);
@@ -79,7 +82,7 @@ router.put('/:id', auth_2.authenticateToken, auth_2.requireAdmin, async (req, re
         next(error);
     }
 });
-router.delete('/:id', auth_2.authenticateToken, auth_2.requireAdmin, async (req, res, next) => {
+router.delete('/:id', auth_1.authenticateToken, auth_1.requireAdmin, async (req, res, next) => {
     try {
         const result = await promoService_1.default.deletePromo(req.params.id);
         res.json({ message: 'Promo deleted successfully' });

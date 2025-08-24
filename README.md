@@ -1,18 +1,53 @@
 # 🛒 Headless E-commerce Backend API
 
-A modern, guest-first e-commerce backend built with **Node.js**, **TypeScript**, **Express**, **Prisma**, and **MongoDB**. This API enables customers to browse products, manage shopping carts, apply promotions, and complete orders without requiring user registration.
+A modern, **guest-first** e-commerce backend built with **Node.js**, **TypeScript**, **Express**, **Prisma**, and **MongoDB**. This API prioritizes immediate shopping experiences without registration barriers, while providing comprehensive management tools for registered users and administrators.
+
+## 🌐 **Live API Server**
+**Production API**: https://project-production-75d9.up.railway.app/  
+**Live Documentation**: https://project-production-75d9.up.railway.app/api-docs
+
+### **🚀 Quick Test the Live API**
+You can immediately test the live API without any setup:
+
+```bash
+# Test 1: Browse products (no auth required)
+curl https://project-production-75d9.up.railway.app/api/products
+
+# Test 2: Create a guest cart (no auth required)
+curl https://project-production-75d9.up.railway.app/api/carts
+
+# Test 3: View promotions (no auth required)  
+curl https://project-production-75d9.up.railway.app/api/promos
+```
+
+**Try it in your browser:**
+- **Products**: https://project-production-75d9.up.railway.app/api/products
+- **Promotions**: https://project-production-75d9.up.railway.app/api/promos
+- **Interactive Docs**: https://project-production-75d9.up.railway.app/api-docs
 
 ## 🎯 System Overview
 
-This headless e-commerce backend provides:
+### **Core Philosophy: Guest-First Shopping**
+This headless e-commerce backend is designed with **guests as the primary focus**, enabling immediate shopping experiences:
 
-- 🔍 **Product Catalog**: Browse products with variants, pricing, and inventory management
-- 🛍️ **Guest Shopping**: No registration required - secure cart tokens for immediate shopping
-- 🛒 **Smart Cart Management**: Add, update, remove items with automatic calculations
-- 🎫 **Promotional System**: Apply discount codes (percentage or fixed amount)
-- 📋 **Order Processing**: Convert carts to orders with customer details and tracking
-- 🔐 **User Authentication**: JWT-based auth for registered users and admins
-- 👑 **Admin Management**: Complete backend tools for managing the entire system
+- 🎭 **Guest Priority**: Browse, cart, and purchase without any registration barriers
+- 🔍 **Instant Access**: Product catalog, cart management, and checkout available immediately
+- � **Seamless Shopping**: Secure guest tokens for persistent cart sessions
+- 🎫 **Smart Promotions**: Apply discount codes without account requirements
+- 📋 **Quick Checkout**: Convert carts to orders with minimal customer information
+- 🔐 **Optional Registration**: Enhanced features for users who choose to register
+- � **Admin Control**: Complete backend management for business operations
+
+### **System Capabilities**
+- ✅ **Zero-friction guest shopping** - Start shopping instantly
+- ✅ **Persistent guest carts** - Secure tokens maintain cart across sessions
+- ✅ **Smart product catalog** - Variants, pricing, inventory, search, filtering
+- ✅ **Flexible promotion system** - Percentage and fixed discounts with conditions
+- ✅ **Order management** - Guest and user orders with status tracking
+- ✅ **User authentication** - JWT-based security for enhanced features
+- ✅ **Admin dashboard** - Complete backend control and analytics
+- ✅ **Comprehensive API docs** - Interactive Swagger documentation
+- ✅ **Error handling** - Consistent, informative error responses
 
 ## 🏗️ Technical Architecture
 
@@ -20,102 +55,110 @@ This headless e-commerce backend provides:
 - **Backend**: Node.js + TypeScript + Express.js
 - **Database**: MongoDB with Prisma ORM
 - **Authentication**: JWT tokens for users, UUID tokens for guests
-- **Documentation**: Swagger/OpenAPI 3.0
+- **Documentation**: Swagger/OpenAPI 3.0 with comprehensive error schemas
 - **Validation**: Zod schemas with middleware
-- **Security**: Helmet, CORS, bcrypt password hashing
+- **Security**: Helmet, CORS, bcrypt password hashing, role-based access control
 
 ### **Database Schema**
 ```
-Users ↔ Carts ↔ CartItems ↔ Products
-  ↓       ↓         ↓          ↓
-Orders → OrderItems → ProductVariants
-  ↓
-Promos
+👤 Users ↔ 🛒 Carts ↔ 📦 CartItems ↔ 🏷️ Products
+    ↓         ↓           ↓             ↓
+📋 Orders → 📋 OrderItems → 🎨 ProductVariants
+    ↓
+🎫 Promos
 ```
 
-## 🌊 System Flow Chart
+### **API Error Handling**
+Our API provides consistent, informative error responses with proper HTTP status codes:
 
-```mermaid
-graph TD
-    A[🌐 Frontend/Client] --> B{User Type?}
-    
-    B -->|Guest User| C[🎭 Guest Mode]
-    B -->|Registered User| D[🔐 Login Required]
-    B -->|Admin User| E[👑 Admin Access]
-    
-    C --> F[📦 Browse Products]
-    D --> G[🔐 POST /api/users/login]
-    E --> G
-    
-    G --> H[🎟️ Get JWT Token]
-    H --> F
-    F --> I[🛒 Cart Management]
-    
-    subgraph "Cart Operations"
-        I --> J[GET /api/carts]
-        J -->|Guest| K[🎟️ Get Guest Token]
-        J -->|User| L[👤 User Cart]
-        K --> M[POST /api/carts/items]
-        L --> M
-        M --> N[PUT /api/carts/items/:id]
-        N --> O[DELETE /api/carts/items/:id]
-    end
-    
-    O --> P[🎫 Apply Promotions]
-    P --> Q[POST /api/promos/apply]
-    Q --> R[📋 Create Order]
-    R --> S[POST /api/orders]
-    S --> T[✅ Order Confirmation]
-    
-    subgraph "Admin Operations"
-        E --> U[📦 Manage Products]
-        E --> V[🎫 Manage Promos]
-        E --> W[📋 Manage Orders]
-        E --> X[👥 Manage Users]
-        
-        U --> U1[POST /api/products]
-        U --> U2[PUT /api/products/:id]
-        U --> U3[DELETE /api/products/:id]
-        
-        V --> V1[POST /api/promos]
-        V --> V2[PUT /api/promos/:id]
-        V --> V3[DELETE /api/promos/:id]
-        
-        W --> W1[GET /api/orders - All Orders]
-        W --> W2[PATCH /api/orders/:id/status]
-        
-        X --> X1[POST /api/users]
-        X --> X2[PUT /api/users/:id]
-        X --> X3[DELETE /api/users/:id]
-    end
+#### **Error Response Format**
+```json
+{
+  "error": "ERROR_CODE",
+  "message": "Human-readable error description",
+  "details": {
+    "field": "specific_field",
+    "code": "validation_code"
+  }
+}
 ```
 
-## 🛍️ User Journey Flows
+#### **HTTP Status Codes**
+- `200` - Success with data
+- `201` - Resource created successfully  
+- `400` - Bad request (validation errors)
+- `401` - Unauthorized (invalid/missing token)
+- `403` - Forbidden (insufficient permissions)
+- `404` - Resource not found
+- `409` - Conflict (duplicate resource)
+- `422` - Validation failed
+- `500` - Internal server error
 
-### 🎭 Guest Shopping Flow (No Registration Required)
+#### **Common Error Types**
+- `VALIDATION_ERROR` - Input validation failed
+- `AUTHENTICATION_ERROR` - Invalid credentials
+- `AUTHORIZATION_ERROR` - Insufficient permissions
+- `NOT_FOUND` - Resource doesn't exist
+- `DUPLICATE_ERROR` - Resource already exists
+- `CART_ERROR` - Cart operation failed
+- `ORDER_ERROR` - Order processing failed
+- `PROMO_ERROR` - Promotion application failed
 
-#### **1. Product Discovery**
+## 🌊 Three-Step Flow for Three User Roles
+
+### 🎭 **STEP 1: GUEST USER FLOW** (Priority #1)
+*No registration required - immediate shopping experience*
+
+#### **Step 1A: Product Discovery**
 ```http
-GET /api/products
+GET https://project-production-75d9.up.railway.app/api/products
 ```
-- Browse product catalog with filtering and pagination
-- Search by name, category, price range
-- View product details, variants (sizes/colors), pricing
-- Check stock availability
-- **No authentication needed**
+**What guests can do:**
+- ✅ Browse complete product catalog
+- ✅ Search by name, category, price range  
+- ✅ View product details, variants (sizes/colors), pricing
+- ✅ Check real-time stock availability
+- ✅ Filter and paginate results
+- ❌ **No authentication needed** - zero barriers
 
-#### **2. Cart Creation**
-```http
-GET /api/carts
+**Example Response:**
+```json
+{
+  "products": [
+    {
+      "id": "64f7b1c2e4b0c1d2e3f4g5h6",
+      "name": "Classic T-Shirt",
+      "slug": "classic-t-shirt",
+      "price": 19.99,
+      "variants": [
+        {"id": "var1", "size": "M", "color": "Blue", "stock": 25},
+        {"id": "var2", "size": "L", "color": "Red", "stock": 18}
+      ]
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 25,
+    "totalPages": 3
+  }
+}
 ```
-- System automatically creates guest cart
-- Returns guest token in `X-Guest-Token` header
-- Token persists cart across browser sessions
-- Cart expires after configurable time period
 
-#### **3. Add Products to Cart**
+#### **Step 1B: Cart Creation & Management**
 ```http
-POST /api/carts/items
+# Get or create guest cart
+GET https://project-production-75d9.up.railway.app/api/carts
+```
+**System automatically:**
+- ✅ Creates secure guest cart (no registration)
+- ✅ Returns guest token in `X-Guest-Token` header
+- ✅ Token persists cart across browser sessions
+- ✅ Cart expires after configurable time period
+
+```http
+# Add products to cart
+POST https://project-production-75d9.up.railway.app/api/carts/items
 Authorization: Bearer <guest-token>
 Content-Type: application/json
 
@@ -124,46 +167,27 @@ Content-Type: application/json
   "quantity": 2
 }
 ```
-- Select specific product variants
-- Automatic quantity and total calculations
-- Real-time stock validation
 
-#### **4. Cart Management**
+**Cart operations available:**
+- ✅ Add specific product variants
+- ✅ Update quantities with real-time validation
+- ✅ Remove individual items
+- ✅ Clear entire cart
+- ✅ Automatic price calculations
+- ✅ Stock availability checks
+
+#### **Step 1C: Checkout & Order Creation**
 ```http
-# Update item quantity
-PUT /api/carts/items/:itemId
+# Apply promotion (optional)
+POST https://project-production-75d9.up.railway.app/api/promos/apply
 Authorization: Bearer <guest-token>
-
-# Remove item from cart
-DELETE /api/carts/items/:itemId
-Authorization: Bearer <guest-token>
-
-# Clear entire cart
-POST /api/carts/clear
-Authorization: Bearer <guest-token>
-```
-
-#### **5. Apply Promotions**
-```http
-POST /api/promos/apply
-Authorization: Bearer <guest-token>
-Content-Type: application/json
-
 {
   "promoCode": "WELCOME10"
 }
-```
-- Validate promo code
-- Check minimum order requirements
-- Apply discount calculations
-- Show savings breakdown
 
-#### **6. Checkout & Order Creation**
-```http
-POST /api/orders
+# Create order
+POST https://project-production-75d9.up.railway.app/api/orders
 Authorization: Bearer <guest-token>
-Content-Type: application/json
-
 {
   "customerInfo": {
     "name": "John Doe",
@@ -179,58 +203,110 @@ Content-Type: application/json
   }
 }
 ```
-- Convert cart to order
-- Capture customer information
-- Generate unique order number
-- Send order confirmation
 
-### 👤 Registered User Flow
+**Checkout features:**
+- ✅ Apply discount codes without registration
+- ✅ Minimal customer information required
+- ✅ Convert cart to order instantly
+- ✅ Generate unique order number
+- ✅ Order confirmation via email
+- ✅ Track order with order number
 
-#### **1. User Authentication**
+### 👤 **STEP 2: REGISTERED USER FLOW**
+*Enhanced features for users who choose to register*
+
+#### **Step 2A: User Authentication**
 ```http
-# Login
-POST /api/users/login
+# User Registration (Optional)
+POST https://project-production-75d9.up.railway.app/api/users/register
 Content-Type: application/json
 
 {
   "email": "user@example.com",
-  "password": "userpassword"
+  "password": "securepassword",
+  "name": "Jane Smith"
 }
 
-# Register (Optional)
-POST /api/users/register
+# User Login
+POST https://project-production-75d9.up.railway.app/api/users/login
 Content-Type: application/json
 
 {
-  "email": "newuser@example.com",
-  "password": "newpassword",
-  "name": "New User"
+  "email": "user@example.com", 
+  "password": "securepassword"
 }
 ```
 
-#### **2. Cart Management with User Account**
+**Authentication benefits:**
+- ✅ Receive JWT token for authenticated requests
+- ✅ Access to enhanced features and user dashboard
+- ✅ Persistent account across devices
+- ✅ Order history and tracking
+
+**Success Response:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "64f7b1c2e4b0c1d2e3f4g5h8",
+    "email": "user@example.com",
+    "name": "Jane Smith",
+    "role": "USER"
+  }
+}
+```
+
+#### **Step 2B: Enhanced Cart & Order Management**
 ```http
-GET /api/carts
+# Get user's persistent cart
+GET https://project-production-75d9.up.railway.app/api/carts
+Authorization: Bearer <jwt-token>
+
+# View order history
+GET https://project-production-75d9.up.railway.app/api/orders
+Authorization: Bearer <jwt-token>
+
+# Track specific order
+GET https://project-production-75d9.up.railway.app/api/orders/:id
 Authorization: Bearer <jwt-token>
 ```
-- Persistent cart across devices
-- Linked to user account
-- Cart survives browser sessions
 
-#### **3. Order History**
+**Registered user advantages:**
+- ✅ **Persistent cart** across all devices and sessions
+- ✅ **Order history** - view all past purchases
+- ✅ **Order tracking** - detailed status updates
+- ✅ **Saved preferences** - faster checkout process
+- ✅ **Account management** - update profile information
+- ✅ **Enhanced support** - linked customer service
+
+#### **Step 2C: User Account Management**
 ```http
-GET /api/orders
+# Get user profile
+GET https://project-production-75d9.up.railway.app/api/users/me
 Authorization: Bearer <jwt-token>
+
+# Update profile
+PUT https://project-production-75d9.up.railway.app/api/users/me
+Authorization: Bearer <jwt-token>
+{
+  "name": "Jane Smith Updated",
+  "email": "new@example.com"
+}
 ```
-- View past orders
-- Track order status
-- Access order details
 
-### 👑 Admin Management Flow
+**Profile features:**
+- ✅ Update personal information
+- ✅ Change password securely
+- ✅ View account statistics
+- ✅ Download order history
 
-#### **1. Admin Authentication**
+### 👑 **STEP 3: ADMIN USER FLOW**
+*Complete backend management and business operations*
+
+#### **Step 3A: Admin Authentication & Access**
 ```http
-POST /api/users/login
+# Admin Login
+POST https://project-production-75d9.up.railway.app/api/users/login
 Content-Type: application/json
 
 {
@@ -238,145 +314,263 @@ Content-Type: application/json
   "password": "admin123"
 }
 ```
-- Admin users receive JWT with ADMIN role
-- Access to all management endpoints
 
-#### **2. Product Management**
+**Admin capabilities:**
+- ✅ Full system access with ADMIN role
+- ✅ Manage all products, orders, users, and promotions
+- ✅ Access to analytics and reporting
+- ✅ System configuration and monitoring
+
+#### **Step 3B: Product & Inventory Management**
 ```http
-# Create Product
-POST /api/products
+# Create new product
+POST https://project-production-75d9.up.railway.app/api/products
 Authorization: Bearer <admin-jwt>
-
-# Update Product
-PUT /api/products/:id
-Authorization: Bearer <admin-jwt>
-
-# Delete Product
-DELETE /api/products/:id
-Authorization: Bearer <admin-jwt>
-
-# Get All Products (including inactive)
-GET /api/products
-Authorization: Bearer <admin-jwt>
-```
-
-#### **3. Promotion Management**
-```http
-# Create Promotion
-POST /api/promos
-Authorization: Bearer <admin-jwt>
-
-# Update Promotion
-PUT /api/promos/:id
-Authorization: Bearer <admin-jwt>
-
-# View All Promotions
-GET /api/promos
-Authorization: Bearer <admin-jwt>
-```
-
-#### **4. Order Management**
-```http
-# View All Orders
-GET /api/orders
-Authorization: Bearer <admin-jwt>
-
-# Update Order Status
-PATCH /api/orders/:id/status
-Authorization: Bearer <admin-jwt>
-
 {
-  "status": "SHIPPED"
+  "name": "New Product",
+  "description": "Product description",
+  "price": 29.99,
+  "categoryId": "cat123",
+  "variants": [
+    {"size": "M", "color": "Blue", "stock": 50, "sku": "PROD-M-BLU"}
+  ]
 }
+
+# Update product
+PUT https://project-production-75d9.up.railway.app/api/products/:id
+Authorization: Bearer <admin-jwt>
+
+# Delete product  
+DELETE https://project-production-75d9.up.railway.app/api/products/:id
+Authorization: Bearer <admin-jwt>
+
+# View all products (including inactive)
+GET https://project-production-75d9.up.railway.app/api/products?includeInactive=true
+Authorization: Bearer <admin-jwt>
 ```
 
-#### **5. User Management**
+**Product management features:**
+- ✅ Create products with multiple variants
+- ✅ Manage inventory and stock levels
+- ✅ Set pricing and promotional pricing
+- ✅ Upload and manage product images
+- ✅ SEO optimization (slugs, meta data)
+- ✅ Category and tag management
+
+#### **Step 3C: Order & Business Management**
 ```http
-# Create User
-POST /api/users
+# View all orders with filters
+GET https://project-production-75d9.up.railway.app/api/orders?status=PENDING&startDate=2024-01-01
 Authorization: Bearer <admin-jwt>
 
-# Update User
-PUT /api/users/:id
+# Update order status
+PATCH https://project-production-75d9.up.railway.app/api/orders/:id/status
 Authorization: Bearer <admin-jwt>
+{
+  "status": "SHIPPED",
+  "trackingNumber": "1Z999AA1234567890"
+}
 
-# Delete User
-DELETE /api/users/:id
+# Create promotion
+POST https://project-production-75d9.up.railway.app/api/promos
 Authorization: Bearer <admin-jwt>
+{
+  "code": "SUMMER25",
+  "type": "PERCENTAGE", 
+  "value": 25,
+  "minOrderValue": 75,
+  "maxDiscount": 50,
+  "expiresAt": "2024-09-30T23:59:59.000Z"
+}
 
-# Get All Users
-GET /api/users
+# User management
+GET https://project-production-75d9.up.railway.app/api/users
+POST https://project-production-75d9.up.railway.app/api/users
+PUT https://project-production-75d9.up.railway.app/api/users/:id
+DELETE https://project-production-75d9.up.railway.app/api/users/:id
 Authorization: Bearer <admin-jwt>
 ```
 
-## 📚 API Documentation
+**Admin management features:**
+- ✅ **Order Management**: View, update, fulfill all orders
+- ✅ **User Management**: Create, update, delete user accounts
+- ✅ **Promotion Management**: Create and manage discount codes
+- ✅ **Analytics Dashboard**: Sales reports, user statistics
+- ✅ **Inventory Control**: Stock levels, low stock alerts
+- ✅ **System Monitoring**: API performance, error tracking
+## 📚 Complete API Documentation
 
 ### 🔐 Authentication Endpoints
 
-| Method | Endpoint | Description | Access Level |
-|--------|----------|-------------|--------------|
-| `POST` | `/api/users/login` | User login - get JWT token | Public |
-| `POST` | `/api/users/register` | User registration | Public |
-| `GET` | `/api/users/me` | Get current user profile | User/Admin |
+| Method | Endpoint | Description | Access Level | Error Codes |
+|--------|----------|-------------|--------------|-------------|
+| `POST` | `/api/users/login` | User login - get JWT token | Public | `400`, `401`, `422` |
+| `POST` | `/api/users/register` | User registration | Public | `400`, `409`, `422` |
+| `GET` | `/api/users/me` | Get current user profile | User/Admin | `401`, `403` |
+
+**Authentication Error Examples:**
+```json
+// Invalid credentials (401)
+{
+  "error": "AUTHENTICATION_ERROR",
+  "message": "Invalid email or password"
+}
+
+// Email already exists (409)
+{
+  "error": "DUPLICATE_ERROR", 
+  "message": "User with this email already exists"
+}
+```
 
 ### 📦 Product Endpoints
 
-| Method | Endpoint | Description | Access Level |
-|--------|----------|-------------|--------------|
-| `GET` | `/api/products` | Browse products with filters | Public |
-| `GET` | `/api/products/:id` | Get product by ID | Public |
-| `GET` | `/api/products/slug/:slug` | Get product by slug | Public |
-| `POST` | `/api/products` | Create new product | Admin |
-| `PUT` | `/api/products/:id` | Update product | Admin |
-| `DELETE` | `/api/products/:id` | Delete product | Admin |
+| Method | Endpoint | Description | Access Level | Error Codes |
+|--------|----------|-------------|--------------|-------------|
+| `GET` | `/api/products` | Browse products with filters | Public | `400`, `500` |
+| `GET` | `/api/products/:id` | Get product by ID | Public | `404` |
+| `GET` | `/api/products/slug/:slug` | Get product by slug | Public | `404` |
+| `POST` | `/api/products` | Create new product | Admin | `401`, `403`, `422` |
+| `PUT` | `/api/products/:id` | Update product | Admin | `401`, `403`, `404`, `422` |
+| `DELETE` | `/api/products/:id` | Delete product | Admin | `401`, `403`, `404` |
+
+**Product Error Examples:**
+```json
+// Product not found (404)
+{
+  "error": "NOT_FOUND",
+  "message": "Product not found"
+}
+
+// Validation error (422)
+{
+  "error": "VALIDATION_ERROR",
+  "message": "Price must be a positive number",
+  "details": {
+    "field": "price",
+    "code": "invalid_type"
+  }
+}
+```
 
 ### 🛒 Cart Endpoints
 
-| Method | Endpoint | Description | Access Level |
-|--------|----------|-------------|--------------|
-| `GET` | `/api/carts` | Get or create cart | Guest/User |
-| `POST` | `/api/carts/items` | Add item to cart | Guest/User |
-| `PUT` | `/api/carts/items/:itemId` | Update cart item | Guest/User |
-| `DELETE` | `/api/carts/items/:itemId` | Remove cart item | Guest/User |
-| `POST` | `/api/carts/clear` | Clear entire cart | Guest/User |
+| Method | Endpoint | Description | Access Level | Error Codes |
+|--------|----------|-------------|--------------|-------------|
+| `GET` | `/api/carts` | Get or create cart | Guest/User | `401` |
+| `POST` | `/api/carts/items` | Add item to cart | Guest/User | `400`, `401`, `404`, `422` |
+| `PUT` | `/api/carts/items/:itemId` | Update cart item | Guest/User | `401`, `404`, `422` |
+| `DELETE` | `/api/carts/items/:itemId` | Remove cart item | Guest/User | `401`, `404` |
+| `POST` | `/api/carts/clear` | Clear entire cart | Guest/User | `401` |
+
+**Cart Error Examples:**
+```json
+// Insufficient stock (400)
+{
+  "error": "CART_ERROR",
+  "message": "Insufficient stock for this item",
+  "details": {
+    "requested": 5,
+    "available": 2
+  }
+}
+
+// Cart item not found (404)
+{
+  "error": "NOT_FOUND",
+  "message": "Cart item not found"
+}
+```
 
 ### 🎫 Promotion Endpoints
 
-| Method | Endpoint | Description | Access Level |
-|--------|----------|-------------|--------------|
-| `GET` | `/api/promos` | List active promotions | Public |
-| `POST` | `/api/promos/apply` | Apply promo to cart | Guest/User |
-| `GET` | `/api/promos/:code/validate` | Validate promo code | Public |
-| `POST` | `/api/promos` | Create promotion | Admin |
-| `PUT` | `/api/promos/:id` | Update promotion | Admin |
-| `DELETE` | `/api/promos/:id` | Delete promotion | Admin |
+| Method | Endpoint | Description | Access Level | Error Codes |
+|--------|----------|-------------|--------------|-------------|
+| `GET` | `/api/promos` | List active promotions | Public | `500` |
+| `POST` | `/api/promos/apply` | Apply promo to cart | Guest/User | `400`, `401`, `404` |
+| `GET` | `/api/promos/:code/validate` | Validate promo code | Public | `404` |
+| `POST` | `/api/promos` | Create promotion | Admin | `401`, `403`, `409`, `422` |
+| `PUT` | `/api/promos/:id` | Update promotion | Admin | `401`, `403`, `404`, `422` |
+| `DELETE` | `/api/promos/:id` | Delete promotion | Admin | `401`, `403`, `404` |
+
+**Promotion Error Examples:**
+```json
+// Promo code expired (400)
+{
+  "error": "PROMO_ERROR",
+  "message": "Promotion code has expired"
+}
+
+// Minimum order not met (400)
+{
+  "error": "PROMO_ERROR",
+  "message": "Order must be at least $50 to use this promotion",
+  "details": {
+    "minOrderValue": 50,
+    "currentOrderValue": 35
+  }
+}
+```
 
 ### 📋 Order Endpoints
 
-| Method | Endpoint | Description | Access Level |
-|--------|----------|-------------|--------------|
-| `POST` | `/api/orders` | Create order from cart | Guest/User |
-| `GET` | `/api/orders` | Get user's orders (or all for admin) | User/Admin |
-| `GET` | `/api/orders/:id` | Get order details | User/Admin |
-| `GET` | `/api/orders/number/:orderNumber` | Get order by number | Guest/User |
-| `PATCH` | `/api/orders/:id/status` | Update order status | Admin |
+| Method | Endpoint | Description | Access Level | Error Codes |
+|--------|----------|-------------|--------------|-------------|
+| `POST` | `/api/orders` | Create order from cart | Guest/User | `400`, `401`, `422` |
+| `GET` | `/api/orders` | Get user's orders (or all for admin) | User/Admin | `401`, `403` |
+| `GET` | `/api/orders/:id` | Get order details | User/Admin | `401`, `403`, `404` |
+| `GET` | `/api/orders/number/:orderNumber` | Get order by number | Guest/User | `404` |
+| `PATCH` | `/api/orders/:id/status` | Update order status | Admin | `401`, `403`, `404`, `422` |
+
+**Order Error Examples:**
+```json
+// Empty cart (400)
+{
+  "error": "ORDER_ERROR",
+  "message": "Cannot create order from empty cart"
+}
+
+// Invalid order status (422)
+{
+  "error": "VALIDATION_ERROR",
+  "message": "Invalid order status transition",
+  "details": {
+    "currentStatus": "SHIPPED",
+    "requestedStatus": "PENDING"
+  }
+}
+```
 
 ### 👥 User Management Endpoints
 
-| Method | Endpoint | Description | Access Level |
-|--------|----------|-------------|--------------|
-| `GET` | `/api/users` | Get all users | Admin |
-| `GET` | `/api/users/:id` | Get user by ID | Admin |
-| `POST` | `/api/users` | Create new user | Admin |
-| `PUT` | `/api/users/:id` | Update user | Admin |
-| `DELETE` | `/api/users/:id` | Delete user | Admin |
+| Method | Endpoint | Description | Access Level | Error Codes |
+|--------|----------|-------------|--------------|-------------|
+| `GET` | `/api/users` | Get all users | Admin | `401`, `403` |
+| `GET` | `/api/users/:id` | Get user by ID | Admin | `401`, `403`, `404` |
+| `POST` | `/api/users` | Create new user | Admin | `401`, `403`, `409`, `422` |
+| `PUT` | `/api/users/:id` | Update user | Admin | `401`, `403`, `404`, `422` |
+| `DELETE` | `/api/users/:id` | Delete user | Admin | `401`, `403`, `404` |
 
+**User Management Error Examples:**
+```json
+// Insufficient permissions (403)
+{
+  "error": "AUTHORIZATION_ERROR",
+  "message": "Insufficient permissions to access this resource"
+}
+
+// User not found (404)
+{
+  "error": "NOT_FOUND",
+  "message": "User not found"
+}
+```
 ## 🚀 Quick Start Guide
 
 ### Prerequisites
-- Node.js 18+ installed
-- MongoDB database (local or cloud)
-- Git for version control
+- **Node.js 18+** installed
+- **MongoDB** database (local or cloud)
+- **Git** for version control
 
 ### Installation Steps
 
@@ -399,11 +593,14 @@ Authorization: Bearer <admin-jwt>
    # or MongoDB Atlas: "mongodb+srv://username:password@cluster.mongodb.net/ecommerce"
    
    # Security
-   JWT_SECRET="your-super-secret-jwt-key-here"
+   JWT_SECRET="your-super-secret-jwt-key-here-min-32-chars"
    
    # Server
    PORT=3000
    NODE_ENV=development
+   
+   # CORS (optional)
+   CORS_ORIGIN="http://localhost:3000"
    ```
 
 4. **Set up database**
@@ -411,7 +608,7 @@ Authorization: Bearer <admin-jwt>
    # Generate Prisma client
    npm run prisma:generate
    
-   # Push schema to database
+   # Push schema to database  
    npm run prisma:push
    
    # Seed with sample data
@@ -420,7 +617,7 @@ Authorization: Bearer <admin-jwt>
 
 5. **Start the server**
    ```bash
-   # Development mode
+   # Development mode with hot reload
    npm run dev
    
    # Production mode
@@ -429,106 +626,313 @@ Authorization: Bearer <admin-jwt>
    ```
 
 6. **Access the API**
-   - API Base URL: http://localhost:3000
-   - Swagger Documentation: http://localhost:3000/api-docs
-   - Prisma Studio: `npm run prisma:studio`
+   - **Local Development**: http://localhost:3000
+   - **Production API**: https://project-production-75d9.up.railway.app/
+   - **Live Documentation**: https://project-production-75d9.up.railway.app/api-docs
+   - **Local Swagger**: http://localhost:3000/api-docs
+   - **Prisma Studio**: `npm run prisma:studio`
 
 ## 🎯 Sample Data (After Seeding)
 
 ### **Test Users**
-- **Admin**: `admin@example.com` / `admin123`
-- **User**: `john@example.com` / `john123`
+```json
+{
+  "admin": {
+    "email": "admin@example.com",
+    "password": "admin123",
+    "role": "ADMIN"
+  },
+  "user": {
+    "email": "john@example.com", 
+    "password": "john123",
+    "role": "USER"
+  }
+}
+```
 
 ### **Sample Products**
-- Classic T-Shirt (Multiple sizes/colors) - $19.99
-- Wireless Headphones (Black/White) - $129.99
-- Coffee Mug (Various colors) - $12.99
-- Smartphone Case (iPhone/Samsung) - $22.99-$24.99
-- Running Shoes (Multiple sizes/colors) - $89.99
+- **Classic T-Shirt** (Multiple sizes/colors) - $19.99
+- **Wireless Headphones** (Black/White) - $129.99  
+- **Coffee Mug** (Various colors) - $12.99
+- **Smartphone Case** (iPhone/Samsung) - $22.99-$24.99
+- **Running Shoes** (Multiple sizes/colors) - $89.99
 
 ### **Active Promo Codes**
 - `WELCOME10` - 10% off orders over $50 (max $20 discount)
 - `SAVE20` - $20 off orders over $100
-- `SUMMER25` - 25% off orders over $75 (max $50 discount)
+- `SUMMER25` - 25% off orders over $75 (max $50 discount)  
 - `FREESHIP` - $9.99 off orders over $25
 
-## 🔒 Security Features
+## 🔒 Security & Error Handling
 
-- **Input Validation**: Zod schemas for all endpoints
-- **Authentication**: JWT tokens with expiration
-- **Authorization**: Role-based access control (USER/ADMIN)
-- **Guest Security**: Secure UUID tokens for cart sessions
-- **Rate Limiting**: Protection against abuse
-- **CORS**: Configurable cross-origin policies
-- **Error Handling**: Consistent error responses
+### **Security Features**
+- ✅ **Input Validation**: Zod schemas for all endpoints
+- ✅ **Authentication**: JWT tokens with expiration
+- ✅ **Authorization**: Role-based access control (USER/ADMIN)
+- ✅ **Guest Security**: Secure UUID tokens for cart sessions
+- ✅ **Password Hashing**: Bcrypt with salt rounds
+- ✅ **CORS Protection**: Configurable cross-origin policies
+- ✅ **Rate Limiting**: Protection against abuse
+- ✅ **Helmet Security**: HTTP headers protection
 
-## 📊 Key Features
+### **Comprehensive Error Handling**
+All API endpoints return consistent error responses with appropriate HTTP status codes:
 
-### **Guest-First Approach**
-- Shopping without registration
-- Secure guest tokens
-- Cart persistence across sessions
+#### **Validation Errors (400/422)**
+```json
+{
+  "error": "VALIDATION_ERROR",
+  "message": "body.email: Invalid email format",
+  "details": {
+    "field": "email",
+    "code": "invalid_string"
+  }
+}
+```
 
-### **Flexible Product System**
-- Products with multiple variants
-- Inventory management
-- Category and search support
+#### **Authentication Errors (401)**
+```json
+{
+  "error": "AUTHENTICATION_ERROR", 
+  "message": "Invalid or expired token"
+}
+```
 
-### **Smart Promotion Engine**
-- Percentage and fixed discounts
-- Minimum order requirements
-- Usage limits and expiration
+#### **Authorization Errors (403)**
+```json
+{
+  "error": "AUTHORIZATION_ERROR",
+  "message": "Insufficient permissions to access this resource"
+}
+```
 
-### **Robust Order System**
-- Guest and user orders
-- Status tracking
-- Customer information capture
+#### **Not Found Errors (404)**
+```json
+{
+  "error": "NOT_FOUND",
+  "message": "Product not found"
+}
+```
 
-## 🧪 Testing
+#### **Business Logic Errors (400)**
+```json
+{
+  "error": "CART_ERROR",
+  "message": "Insufficient stock for this item",
+  "details": {
+    "requested": 5,
+    "available": 2,
+    "productId": "64f7b1c2e4b0c1d2e3f4g5h6"
+  }
+}
+```
 
+### **Error Handling in Swagger Documentation**
+Our Swagger/OpenAPI documentation includes comprehensive error schemas for each endpoint:
+
+- **Error response examples** for each HTTP status code
+- **Detailed error codes** and their meanings  
+- **Request/response validation schemas**
+- **Interactive testing** with proper error handling
+- **Authentication examples** for different user roles
+
+## 📊 Key Features Summary
+
+### **🎭 Guest-First Design**
+- ✅ **Zero barriers** - shop immediately without registration
+- ✅ **Secure guest tokens** - persistent cart sessions
+- ✅ **Full shopping experience** - browse, cart, checkout, order tracking
+- ✅ **Optional registration** - enhanced features when desired
+
+### **📦 Advanced Product System**
+- ✅ **Product variants** - sizes, colors, different pricing
+- ✅ **Real-time inventory** - stock validation and management
+- ✅ **Smart search** - filtering, pagination, sorting
+- ✅ **SEO optimization** - slugs, meta data, structured data
+
+### **🎫 Intelligent Promotion Engine**
+- ✅ **Flexible discounts** - percentage and fixed amount
+- ✅ **Smart conditions** - minimum order, usage limits, expiration
+- ✅ **Stackable promotions** - multiple promo support
+- ✅ **Usage tracking** - analytics and reporting
+
+### **📋 Robust Order Management**
+- ✅ **Guest and user orders** - unified system
+- ✅ **Status tracking** - real-time updates
+- ✅ **Order history** - searchable and filterable
+- ✅ **Customer communication** - email notifications
+
+### **👑 Complete Admin Dashboard**
+- ✅ **Product management** - CRUD operations, inventory
+- ✅ **Order processing** - status updates, fulfillment
+- ✅ **User management** - accounts, roles, permissions  
+- ✅ **Analytics** - sales reports, performance metrics
+## 🧪 Testing & Development
+
+### **Running Tests**
 ```bash
 # Run all tests
 npm test
 
-# Run tests in watch mode
+# Run tests in watch mode  
 npm run test:watch
 
 # Run specific test file
 npm test -- products.test.js
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+### **Development Tools**
+```bash
+# Start development server with hot reload
+npm run dev
+
+# View database with Prisma Studio
+npm run prisma:studio
+
+# Reset database (development only)
+npm run prisma:reset
+
+# View API documentation
+# http://localhost:3000/api-docs
+```
+
+### **Database Management**
+```bash
+# Generate Prisma client after schema changes
+npm run prisma:generate
+
+# Push schema changes to database
+npm run prisma:push
+
+# Create and apply migrations (production)
+npm run prisma:migrate
+
+# Seed database with sample data
+npm run prisma:seed
 ```
 
 ## 📈 Production Deployment
 
-### Environment Variables
+### **Environment Variables**
 ```env
+# Production environment
 NODE_ENV=production
 PORT=3000
+
+# Secure database connection
 DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/ecommerce
-JWT_SECRET=your-production-jwt-secret
+
+# Strong JWT secret (min 32 characters)
+JWT_SECRET=your-super-secure-production-jwt-secret-key
+
+# Frontend domain for CORS
 CORS_ORIGIN=https://your-frontend-domain.com
+
+# Optional: Rate limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
 ```
 
-### Build Commands
+### **Build & Deploy Commands**
 ```bash
+# Install production dependencies only
 npm ci --only=production
+
+# Build TypeScript to JavaScript
 npm run build
+
+# Start production server
 npm start
+
+# Or use PM2 for process management
+pm2 start dist/app.js --name ecommerce-api
+```
+
+### **Docker Deployment**
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "start"]
 ```
 
 ## 🤝 Contributing
 
+### **Development Workflow**
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes and add tests
+4. Ensure all tests pass (`npm test`)
+5. Commit changes (`git commit -m 'Add amazing feature'`)
+6. Push to branch (`git push origin feature/amazing-feature`)
+7. Submit a pull request
 
-## 📞 Support
+### **Code Standards**
+- ✅ **TypeScript** - Strict type checking enabled
+- ✅ **ESLint** - Code linting and formatting
+- ✅ **Prettier** - Consistent code formatting  
+- ✅ **Zod** - Runtime type validation
+- ✅ **Jest** - Unit and integration testing
+- ✅ **Swagger** - API documentation
 
-- **Documentation**: http://localhost:3000/api-docs
-- **Issues**: GitHub Issues
-- **Email**: Support contact information
+### **Commit Guidelines**
+- `feat:` - New features
+- `fix:` - Bug fixes
+- `docs:` - Documentation changes
+- `test:` - Test additions/modifications
+- `refactor:` - Code refactoring
+- `style:` - Code formatting changes
+
+## � Support & Resources
+
+### **Documentation**
+- 📚 **Live API Documentation**: https://project-production-75d9.up.railway.app/api-docs
+- 📚 **Local API Documentation**: http://localhost:3000/api-docs
+- 🔧 **Prisma Schema**: [./prisma/schema.prisma](./prisma/schema.prisma)
+- 📋 **Project Summary**: [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md)
+- 🔐 **Authentication Guide**: [AUTHENTICATION_GUIDE.md](./AUTHENTICATION_GUIDE.md)
+
+### **Quick Links**
+- **Live Production API**: https://project-production-75d9.up.railway.app/
+- **Swagger UI**: Interactive API testing interface
+- **Prisma Studio**: Visual database management
+- **GitHub Issues**: Bug reports and feature requests
+- **MongoDB Atlas**: Cloud database hosting
+
+### **Contact**
+- **Email**: shariarhosain131529@gmail.com
+- **Repository**: GitHub repository link
+- **Issues**: GitHub Issues page
 
 ---
 
-**This headless e-commerce backend provides everything needed to power modern shopping experiences - from guest browsing to admin management, built with performance, security, and developer experience in mind.** 🛍️
+## 🎯 Summary
+
+This **guest-first headless e-commerce backend** is designed to provide:
+
+### **🎭 For Guests** (Priority #1)
+- **Instant shopping** without any barriers
+- **Secure cart management** with persistent tokens  
+- **Complete checkout process** with minimal information
+- **Order tracking** via order number
+
+### **👤 For Registered Users**
+- **Enhanced features** with persistent accounts
+- **Order history** and tracking across devices
+- **Faster checkout** with saved information
+- **Account management** and preferences
+
+### **👑 For Administrators**  
+- **Complete backend control** for business operations
+- **Product and inventory management** with variants
+- **Order processing** and fulfillment tools
+- **User and promotion management** with analytics
+
+**Built with modern technologies, comprehensive error handling, extensive API documentation, and a security-first approach - this backend provides everything needed to power exceptional shopping experiences.** 🛍️✨

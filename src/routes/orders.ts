@@ -3,7 +3,7 @@ import orderService from '../services/orderService';
 import { validate } from '../middleware/validation';
 import { createOrderSchema, paginationSchema } from '../schemas/validation';
 import { extractGuestToken, extractUserToken } from '../utils/auth';
-import { authenticateToken, requireAdmin, optionalAuth, requireUser, AuthenticatedRequest } from '../middleware/auth';
+import { authenticateToken, requireAdmin, optionalAuth, requireUser, guestOrAuth, ensureGuestToken, AuthenticatedRequest } from '../middleware/auth';
 import { createError } from '../middleware/errorHandler';
 
 const router = express.Router();
@@ -219,42 +219,62 @@ router.get('/', authenticateToken, requireUser, async (req: AuthenticatedRequest
  * @swagger
  * /api/orders:
  *   post:
- *     summary: 🛒 Create order from cart (User Authentication Required)
+ *     summary: 🛒 Create order from cart (Guest/User Support with Account Creation)
  *     description: |
- *       **USER AUTHENTICATION REQUIRED**: Create an order from the items in your cart.
+ *       **GUEST/USER SUPPORT**: Create an order from cart items with optional account creation.
  *       
- *       **🔐 Authentication**: Valid JWT token required in Authorization header
- *       - **Step 1**: Login via `POST /api/users/login` to get JWT token
- *       - **Step 2**: Use token to create authenticated order
+ *       **⚠️ PREREQUISITES**: 
+ *       - **Cart must have items**: Use `POST /api/carts/items` to add products first
+ *       - **Guest token required**: Use the same guest token for cart and order operations
+ *       
+ *       **🔐 Authentication Options**:
+ *       - **Guest Orders**: Use guest token from cart operations
+ *       - **User Orders**: Use JWT token in Authorization header
+ *       - **Account Creation**: Guests can create accounts during checkout
+ *       
+ *       **📋 Step-by-Step Workflow**:
+ *       1. **Add items to cart**: `POST /api/carts/items` with guest token
+ *       2. **Create order**: Use same guest token for this endpoint
  *       
  *       **Process Flow**:
- *       1. ✅ Validates user authentication with password login
- *       2. 🛒 Validates cart has items
+ *       1. 🛒 Validates cart has items (guest or user cart)
+ *       2. 👤 Optionally creates user account if requested by guest
  *       3. 🎫 Applies any promotional codes
  *       4. 💰 Calculates final totals
- *       5. 📝 Creates order record linked to user account
+ *       5. 📝 Creates order record (linked to user if authenticated/created)
  *       6. 🗑️ Clears the cart
  *       7. ✉️ Sends confirmation
  *       
+ *       **Guest Account Creation**:
+ *       - Set `createAccount: true` and provide `password`
+ *       - User account will be created with email from customerInfo
+ *       - Guest cart items will be transferred to new user account
+ *       - Returns JWT token for immediate login
+ *       
  *       **Security Features**:
- *       - Password-based authentication required
- *       - Order linked to verified user account
- *       - User order history tracking
- *       - Secure order tracking
+ *       - Secure guest token handling
+ *       - Optional user account creation
+ *       - Order tracking for both guests and users
+ *       - Cart transfer during account creation
  *     tags: [Orders]
  *     security:
  *       - BearerAuth: []
+ *       - GuestToken: []
+ *       - {}
  *     parameters:
  *       - in: header
  *         name: Authorization
- *         required: true
+ *         required: false
  *         schema:
  *           type: string
  *         description: |
- *           **Required**: JWT authentication token from login
- *           Format: `Bearer <jwt-token>`
- *           Get token from: `POST /api/users/login`
- *         example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *           **Optional**: 
+ *           - **Guest**: `Bearer <guest-uuid>` for guest cart (UUID format)
+ *           - **User**: `Bearer <jwt-token>` for authenticated user (JWT format)
+ *           - **No header**: Creates new guest token automatically
+ *           
+ *           **Note**: In Swagger UI, paste only the token value (without "Bearer " prefix)
+ *         example: "4fd8fc02-c372-4d4a-ba00-d1d9e9e93b2f"
  *     requestBody:
  *       required: true
  *       content:
@@ -263,6 +283,7 @@ router.get('/', authenticateToken, requireUser, async (req: AuthenticatedRequest
  *             type: object
  *             required:
  *               - customerInfo
+ *               - paymentInfo
  *             properties:
  *               customerInfo:
  *                 type: object
@@ -299,41 +320,68 @@ router.get('/', authenticateToken, requireUser, async (req: AuthenticatedRequest
  *                         example: "123 Main St"
  *                       city:
  *                         type: string
- *                         description: City name
+ *                         description: City
  *                         example: "New York"
  *                       state:
  *                         type: string
- *                         description: State or province
+ *                         description: State/Province
  *                         example: "NY"
  *                       zipCode:
  *                         type: string
- *                         description: Postal/ZIP code
+ *                         description: ZIP/Postal code
  *                         example: "10001"
  *                       country:
  *                         type: string
- *                         description: Country name
- *                         example: "United States"
+ *                         description: Country
+ *                         example: "USA"
  *               paymentInfo:
  *                 type: object
  *                 required:
  *                   - method
+ *                   - transactionId
  *                 properties:
  *                   method:
  *                     type: string
- *                     enum: [CREDIT_CARD, DEBIT_CARD, PAYPAL, STRIPE, CASH_ON_DELIVERY]
- *                     description: Payment method
- *                     example: "CREDIT_CARD"
+ *                     enum: [credit_card, debit_card, paypal, stripe, apple_pay, google_pay, bank_transfer, cash_on_delivery]
+ *                     description: Payment method used
+ *                     example: "credit_card"
  *                   transactionId:
  *                     type: string
- *                     description: Payment gateway transaction ID (if applicable)
- *                     example: "pi_1234567890abcdef"
- *               notes:
+ *                     description: Payment gateway transaction ID
+ *                     example: "txn_1234567890abcdef"
+ *                   cardLastFour:
+ *                     type: string
+ *                     description: Last 4 digits of card (optional)
+ *                     example: "1234"
+ *                   cardBrand:
+ *                     type: string
+ *                     description: Card brand (optional)
+ *                     example: "visa"
+ *                   paymentGateway:
+ *                     type: string
+ *                     description: Payment gateway used (optional)
+ *                     example: "stripe"
+ *                   gatewayResponse:
+ *                     type: object
+ *                     description: Raw response from payment gateway (optional)
+ *                     example: {"status": "succeeded", "receipt_url": "https://..."}
+ *               promoCode:
  *                 type: string
- *                 description: Special instructions or notes for the order
- *                 example: "Please deliver between 2-4 PM"
+ *                 description: Optional promotional code
+ *                 example: "SAVE10"
+ *               createAccount:
+ *                 type: boolean
+ *                 description: Create user account during checkout (guests only)
+ *                 default: false
+ *                 example: true
+ *               password:
+ *                 type: string
+ *                 description: Password for account creation (required if createAccount is true)
+ *                 minLength: 6
+ *                 example: "securepassword123"
  *           examples:
- *             user_order:
- *               summary: Logged-in user creating order
+ *             guestOrder:
+ *               summary: Guest Order (No Account)
  *               value:
  *                 customerInfo:
  *                   name: "John Doe"
@@ -344,26 +392,60 @@ router.get('/', authenticateToken, requireUser, async (req: AuthenticatedRequest
  *                     city: "New York"
  *                     state: "NY"
  *                     zipCode: "10001"
- *                     country: "United States"
+ *                     country: "USA"
  *                 paymentInfo:
- *                   method: "CREDIT_CARD"
- *                   transactionId: "pi_1234567890abcdef"
- *                 notes: "Please ring doorbell twice"
- *             guest_order:
- *               summary: Guest user creating order
+ *                   method: "credit_card"
+ *                   transactionId: "txn_1234567890abcdef"
+ *                   cardLastFour: "1234"
+ *                   cardBrand: "visa"
+ *                   paymentGateway: "stripe"
+ *                   gatewayResponse:
+ *                     status: "succeeded"
+ *                     receipt_url: "https://pay.stripe.com/receipts/..."
+ *                 promoCode: "SAVE10"
+ *                 createAccount: false
+ *             guestOrderWithAccount:
+ *               summary: Guest Order with Account Creation
  *               value:
  *                 customerInfo:
  *                   name: "Jane Smith"
  *                   email: "jane@example.com"
+ *                   phone: "+1234567890"
  *                   address:
  *                     street: "456 Oak Ave"
  *                     city: "Los Angeles"
  *                     state: "CA"
  *                     zipCode: "90210"
- *                     country: "United States"
+ *                     country: "USA"
  *                 paymentInfo:
- *                   method: "PAYPAL"
- *                   transactionId: "PAY-1234567890"
+ *                   method: "paypal"
+ *                   transactionId: "paypal_txn_987654321"
+ *                   paymentGateway: "paypal"
+ *                   gatewayResponse:
+ *                     status: "COMPLETED"
+ *                     payment_id: "PAYID-123456789"
+ *                 promoCode: "WELCOME20"
+ *                 createAccount: true
+ *                 password: "securepassword123"
+ *             userOrder:
+ *               summary: Authenticated User Order
+ *               value:
+ *                 customerInfo:
+ *                   name: "Bob Johnson"
+ *                   email: "bob@example.com"
+ *                   address:
+ *                     street: "789 Pine St"
+ *                     city: "Chicago"
+ *                     state: "IL"
+ *                     zipCode: "60601"
+ *                     country: "USA"
+ *                 paymentInfo:
+ *                   method: "apple_pay"
+ *                   transactionId: "apay_456789123def"
+ *                   paymentGateway: "stripe"
+ *                   gatewayResponse:
+ *                     status: "succeeded"
+ *                     payment_method: "pm_1234567890"
  *     responses:
  *       201:
  *         description: ✅ Order created successfully
@@ -377,24 +459,54 @@ router.get('/', authenticateToken, requireUser, async (req: AuthenticatedRequest
  *                     message:
  *                       type: string
  *                       example: "Order created successfully"
+ *                     accountCreated:
+ *                       type: boolean
+ *                       description: Whether a new account was created
+ *                       example: true
+ *                     user:
+ *                       type: object
+ *                       description: User data (if account was created)
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         role:
+ *                           type: string
+ *                     token:
+ *                       type: string
+ *                       description: JWT token (if account was created)
+ *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *         headers:
+ *           X-Guest-Token:
+ *             description: New guest token (if none was provided)
+ *             schema:
+ *               type: string
  *       400:
- *         description: ❌ Invalid request data or empty cart
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ValidationError'
- *       401:
- *         description: ❌ Unauthorized - Missing or invalid token
+ *         description: ❌ Bad request (cart empty, validation errors, etc.)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- *       404:
- *         description: ❌ Cart not found or empty
+ *             examples:
+ *               emptyCart:
+ *                 summary: Empty Cart
+ *                 value:
+ *                   error: "Cart is empty"
+ *               passwordRequired:
+ *                 summary: Password Required for Account Creation
+ *                 value:
+ *                   error: "Password is required when creating an account"
+ *       409:
+ *         description: ❌ Account already exists with this email
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               error: "An account with this email already exists. Please login instead."
  *       500:
  *         description: ❌ Internal server error
  *         content:
@@ -402,12 +514,25 @@ router.get('/', authenticateToken, requireUser, async (req: AuthenticatedRequest
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/', authenticateToken, requireUser, validate(createOrderSchema), async (req: AuthenticatedRequest, res, next) => {
+router.post('/', guestOrAuth, ensureGuestToken, validate(createOrderSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
-    const user = req.user!; // User is guaranteed to exist with requireUser middleware
+    const { user, guestToken, isGuest } = req;
     
-    const order = await orderService.createOrder(user.id, req.body, true);
-    res.status(201).json({ message: 'Order created successfully', ...order });
+    // Determine if this is a user or guest order
+    const isUserOrder = !!user;
+    const userIdOrGuestToken = isUserOrder ? user!.id : guestToken!;
+    
+    const order = await orderService.createOrderForGuestOrUser(userIdOrGuestToken, req.body, isUserOrder);
+    
+    let message = 'Order created successfully';
+    if (order.accountCreated) {
+      message += ' and account created';
+    }
+    
+    res.status(201).json({ 
+      message,
+      ...order 
+    });
   } catch (error) {
     next(error);
   }
@@ -433,6 +558,8 @@ router.post('/', authenticateToken, requireUser, validate(createOrderSchema), as
  *     tags: [Orders]
  *     security:
  *       - BearerAuth: []
+ *       - GuestToken: []
+ *       - {}
  *     parameters:
  *       - in: path
  *         name: orderNumber
@@ -478,6 +605,106 @@ router.get('/number/:orderNumber', optionalAuth, async (req: AuthenticatedReques
     
     const order = await orderService.getOrderByNumber(orderNumber, user?.id);
     res.json(order);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /api/orders/analytics:
+ *   get:
+ *     summary: Get order analytics (admins only)
+ *     description: |
+ *       **ADMIN ONLY**: Get comprehensive order analytics and statistics.
+ *       
+ *       **Required**: Admin JWT token in Authorization header
+ *       
+ *       **Features**:
+ *       - Total orders and revenue
+ *       - Orders by status breakdown
+ *       - Recent orders summary
+ *       - Date range filtering
+ *       
+ *       **Use Cases**:
+ *       - Dashboard analytics
+ *       - Business reporting
+ *       - Sales performance tracking
+ *       - Order management insights
+ *     tags: [Orders]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for analytics (YYYY-MM-DD)
+ *         example: "2024-01-01"
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for analytics (YYYY-MM-DD)
+ *         example: "2024-12-31"
+ *     responses:
+ *       200:
+ *         description: ✅ Order analytics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalOrders:
+ *                   type: integer
+ *                   description: Total number of orders
+ *                   example: 1250
+ *                 totalRevenue:
+ *                   type: number
+ *                   description: Total revenue amount
+ *                   example: 125000.50
+ *                 ordersByStatus:
+ *                   type: object
+ *                   description: Order count by status
+ *                   example:
+ *                     PENDING: 45
+ *                     CONFIRMED: 120
+ *                     PROCESSING: 80
+ *                     SHIPPED: 200
+ *                     DELIVERED: 750
+ *                     CANCELLED: 35
+ *                     REFUNDED: 20
+ *                 recentOrders:
+ *                   type: array
+ *                   description: Recent orders summary
+ *                   items:
+ *                     $ref: '#/components/schemas/Order'
+ *       401:
+ *         description: ❌ Unauthorized - Missing or invalid token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: ❌ Forbidden - Admin access required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: ❌ Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get('/analytics', authenticateToken, requireAdmin, async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query as any;
+    const analytics = await orderService.getOrderAnalytics(startDate, endDate);
+    res.json(analytics);
   } catch (error) {
     next(error);
   }
@@ -667,105 +894,6 @@ router.put('/:id/status', authenticateToken, requireAdmin, async (req, res, next
     
     const order = await orderService.updateOrderStatus(id, status, notes);
     res.json(order);
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * @swagger
- * /api/orders/{id}:
- *   get:
- *     summary: Get order by ID
- *     tags: [Orders]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Order ID
- *     responses:
- *       200:
- *         description: Order details
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Order'
- *       404:
- *         description: Order not found
- */
-router.get('/:id', async (req, res, next) => {
-  try {
-    const order = await orderService.getOrderById(req.params.id);
-    res.json(order);
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * @swagger
- * /api/orders/number/{orderNumber}:
- *   get:
- *     summary: Get order by order number
- *     tags: [Orders]
- *     parameters:
- *       - in: path
- *         name: orderNumber
- *         required: true
- *         schema:
- *           type: string
- *         description: Order number
- *     responses:
- *       200:
- *         description: Order details
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Order'
- *       404:
- *         description: Order not found
- */
-router.get('/number/:orderNumber', async (req, res, next) => {
-  try {
-    const order = await orderService.getOrderByNumber(req.params.orderNumber);
-    res.json(order);
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * @swagger
- * /api/orders/analytics:
- *   get:
- *     summary: Get order analytics
- *     tags: [Orders]
- *     responses:
- *       200:
- *         description: Order analytics
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 totalOrders:
- *                   type: integer
- *                 totalRevenue:
- *                   type: number
- *                 ordersByStatus:
- *                   type: object
- *                 recentOrders:
- *                   type: array
- *                   items:
- *                     type: object
- */
-router.get('/analytics', authenticateToken, requireAdmin, async (req, res, next) => {
-  try {
-    const { startDate, endDate } = req.query as any;
-    const analytics = await orderService.getOrderAnalytics(startDate, endDate);
-    res.json(analytics);
   } catch (error) {
     next(error);
   }

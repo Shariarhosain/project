@@ -1,7 +1,7 @@
 import express from 'express';
 import { UserService } from '../services/UserService';
 import { validate } from '../middleware/validation';
-import { authenticateToken, requireAdmin, requireUser, AuthenticatedRequest } from '../middleware/auth';
+import { authenticateToken, requireAdmin, requireUser, guestOrAuth, ensureGuestToken, AuthenticatedRequest } from '../middleware/auth';
 import { z } from 'zod';
 
 const router = express.Router();
@@ -105,7 +105,7 @@ const registerSchema = z.object({
  *       - **Admin**: admin@example.com / admin123
  *       - **User**: john@example.com / john123  
  *       - **User**: jane@example.com / jane123
- *     tags: [01 🔐 Authentication]
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
@@ -200,7 +200,7 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
  *       **Admin Creation**: Only existing admins can create new admin accounts.
  *       
  *       After registration, use the login endpoint to get your JWT token.
- *     tags: [01 🔐 Authentication]
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:

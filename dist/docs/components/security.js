@@ -11,7 +11,7 @@ exports.securitySchemes = {
     GuestToken: {
         type: 'http',
         scheme: 'bearer',
-        description: 'Auto-generated UUID token for guest users. No registration required.'
+        description: 'Auto-generated UUID token for guest users. No registration required. Format: Bearer <guest-uuid>'
     }
 };
 //# sourceMappingURL=security.js.map

@@ -32,10 +32,14 @@ export const swaggerOptions = {
         url: `http://localhost:${process.env.PORT || 3000}`,
         description: 'Development server',
       },
+      {
+        url: 'https://project-production-75d9.up.railway.app/',
+        description: 'Production server',
+      }
     ],
     tags: [
       {
-        name: '01 🔐 Authentication',
+        name: 'Authentication',
         description: '🔐 **Authentication** - Login, register, and get JWT tokens',
       },
       {

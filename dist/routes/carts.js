@@ -7,19 +7,16 @@ const express_1 = __importDefault(require("express"));
 const cartService_1 = __importDefault(require("../services/cartService"));
 const validation_1 = require("../middleware/validation");
 const validation_2 = require("../schemas/validation");
-const auth_1 = require("../utils/auth");
-const auth_2 = require("../middleware/auth");
-const errorHandler_1 = require("../middleware/errorHandler");
+const auth_1 = require("../middleware/auth");
 const router = express_1.default.Router();
-router.get('/', auth_2.optionalAuth, async (req, res, next) => {
+router.get('/', auth_1.guestOrAuth, auth_1.ensureGuestToken, async (req, res, next) => {
     try {
         let cart;
         if (req.user) {
             cart = await cartService_1.default.getOrCreateCart(undefined, req.user.id);
         }
         else {
-            const guestToken = (0, auth_1.extractGuestToken)(req.headers.authorization);
-            cart = await cartService_1.default.getOrCreateCart(guestToken || undefined);
+            cart = await cartService_1.default.getOrCreateCart(req.guestToken);
         }
         res.json(cart);
     }
@@ -27,53 +24,45 @@ router.get('/', auth_2.optionalAuth, async (req, res, next) => {
         next(error);
     }
 });
-router.post('/items', (0, validation_1.validate)(validation_2.addToCartSchema), async (req, res, next) => {
+router.post('/items', auth_1.guestOrAuth, auth_1.ensureGuestToken, (0, validation_1.validate)(validation_2.addToCartSchema), async (req, res, next) => {
     try {
-        let guestToken = (0, auth_1.extractGuestToken)(req.headers.authorization);
-        if (!guestToken) {
-            const newCart = await cartService_1.default.getOrCreateCart();
-            guestToken = newCart.guestToken;
+        let cart;
+        if (req.user) {
+            cart = await cartService_1.default.addToCart(undefined, req.body, req.user.id);
         }
-        const cart = await cartService_1.default.addToCart(guestToken, req.body);
+        else {
+            cart = await cartService_1.default.addToCart(req.guestToken, req.body);
+        }
         res.json(cart);
     }
     catch (error) {
         next(error);
     }
 });
-router.put('/items/:itemId', (0, validation_1.validate)(validation_2.updateCartItemSchema), async (req, res, next) => {
+router.put('/items/:itemId', auth_1.guestOrAuth, auth_1.ensureGuestToken, (0, validation_1.validate)(validation_2.updateCartItemSchema), async (req, res, next) => {
     try {
-        const guestToken = (0, auth_1.extractGuestToken)(req.headers.authorization);
-        if (!guestToken) {
-            throw (0, errorHandler_1.createError)('Guest token is required', 401);
-        }
-        const cart = await cartService_1.default.updateCartItem(guestToken, req.params.itemId, req.body);
+        const tokenToUse = req.user ? `user:${req.user.id}` : req.guestToken;
+        const cart = await cartService_1.default.updateCartItem(tokenToUse, req.params.itemId, req.body);
         res.json(cart);
     }
     catch (error) {
         next(error);
     }
 });
-router.delete('/items/:itemId', async (req, res, next) => {
+router.delete('/items/:itemId', auth_1.guestOrAuth, auth_1.ensureGuestToken, async (req, res, next) => {
     try {
-        const guestToken = (0, auth_1.extractGuestToken)(req.headers.authorization);
-        if (!guestToken) {
-            throw (0, errorHandler_1.createError)('Guest token is required', 401);
-        }
-        const cart = await cartService_1.default.removeCartItem(guestToken, req.params.itemId);
+        const tokenToUse = req.user ? `user:${req.user.id}` : req.guestToken;
+        const cart = await cartService_1.default.removeCartItem(tokenToUse, req.params.itemId);
         res.json(cart);
     }
     catch (error) {
         next(error);
     }
 });
-router.post('/clear', async (req, res, next) => {
+router.post('/clear', auth_1.guestOrAuth, auth_1.ensureGuestToken, async (req, res, next) => {
     try {
-        const guestToken = (0, auth_1.extractGuestToken)(req.headers.authorization);
-        if (!guestToken) {
-            throw (0, errorHandler_1.createError)('Guest token is required', 401);
-        }
-        const cart = await cartService_1.default.clearCart(guestToken);
+        const tokenToUse = req.user ? `user:${req.user.id}` : req.guestToken;
+        const cart = await cartService_1.default.clearCart(tokenToUse);
         res.json(cart);
     }
     catch (error) {

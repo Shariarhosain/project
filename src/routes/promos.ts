@@ -3,7 +3,7 @@ import promoService from '../services/promoService';
 import { validate } from '../middleware/validation';
 import { createPromoSchema, applyPromoSchema, paginationSchema } from '../schemas/validation';
 import { extractGuestToken, extractUserToken } from '../utils/auth';
-import { authenticateToken, requireAdmin, optionalAuth, AuthenticatedRequest } from '../middleware/auth';
+import { authenticateToken, requireAdmin, optionalAuth, guestOrAuth, ensureGuestToken, AuthenticatedRequest } from '../middleware/auth';
 import { createError } from '../middleware/errorHandler';
 
 const router = express.Router();
@@ -165,17 +165,24 @@ router.get('/', optionalAuth, validate(paginationSchema), async (req: Authentica
  * @swagger
  * /api/promos/apply:
  *   post:
- *     summary: 🎯 Apply promo code to cart (Public)
+ *     summary: 🎯 Apply promo code to cart (Guest/User)
  *     description: |
- *       **PUBLIC ENDPOINT**: Apply a promotional code to a shopping cart.
+ *       **GUEST/USER ENDPOINT**: Apply a promotional code to a shopping cart.
  *       
- *       **No authentication required** - Works for both guest and user carts
+ *       **Authentication Options**:
+ *       - **Guest**: Use guest token or no token (new guest token will be generated)
+ *       - **Registered User**: Use JWT token to apply to user's cart
  *       
  *       **Features**:
  *       - Validates promo code and requirements
  *       - Calculates discount amount
  *       - Checks minimum cart amount
  *       - Verifies usage limits and expiry
+ *       
+ *       **How it works**:
+ *       - **No token**: Creates new guest cart and returns guest token in X-Guest-Token header
+ *       - **Guest token**: Applies promo to existing guest cart
+ *       - **User token**: Applies promo to user's cart
  *       
  *       **Use Cases**:
  *       - Apply discount during checkout
@@ -184,6 +191,8 @@ router.get('/', optionalAuth, validate(paginationSchema), async (req: Authentica
  *     tags: [Promos]
  *     security:
  *       - BearerAuth: []
+ *       - GuestToken: []
+ *       - {}
  *     parameters:
  *       - in: header
  *         name: Authorization
@@ -192,8 +201,9 @@ router.get('/', optionalAuth, validate(paginationSchema), async (req: Authentica
  *           type: string
  *         description: |
  *           **Optional**: 
- *           - `Bearer <guest-token>` = Apply to guest cart
- *           - `Bearer <jwt-token>` = Apply to user cart
+ *           - No header = New guest cart created
+ *           - `Bearer <guest-token>` = Existing guest cart
+ *           - `Bearer <jwt-token>` = User cart
  *         example: "Bearer guest-uuid-token-here"
  *     requestBody:
  *       required: true
@@ -220,6 +230,11 @@ router.get('/', optionalAuth, validate(paginationSchema), async (req: Authentica
  *     responses:
  *       200:
  *         description: ✅ Promo code applied successfully
+ *         headers:
+ *           X-Guest-Token:
+ *             description: Guest token (only for new guest carts)
+ *             schema:
+ *               type: string
  *         content:
  *           application/json:
  *             schema:
@@ -289,7 +304,7 @@ router.get('/', optionalAuth, validate(paginationSchema), async (req: Authentica
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/apply', optionalAuth, validate(applyPromoSchema), async (req: AuthenticatedRequest, res, next) => {
+router.post('/apply', guestOrAuth, ensureGuestToken, validate(applyPromoSchema), async (req: AuthenticatedRequest, res, next) => {
   try {
     let guestToken: string | undefined;
     let userId: string | undefined;
@@ -297,10 +312,90 @@ router.post('/apply', optionalAuth, validate(applyPromoSchema), async (req: Auth
     if (req.user) {
       userId = req.user.id;
     } else {
-      guestToken = extractGuestToken(req.headers.authorization) || undefined;
+      guestToken = req.guestToken;
     }
     
     const result = await promoService.applyPromoToCart(guestToken, req.body.promoCode, userId);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /api/promos/remove:
+ *   delete:
+ *     summary: ❌ Remove applied promo code from cart (Guest/User)
+ *     description: |
+ *       **GUEST/USER ENDPOINT**: Remove the currently applied promo code from cart.
+ *       
+ *       **Authentication Options**:
+ *       - **Guest**: Use guest token to remove promo from guest cart
+ *       - **Registered User**: Use JWT token to remove promo from user cart
+ *       
+ *       **Response includes**:
+ *       - Success message
+ *       - Updated cart without promo discount
+ *     tags: [Promos]
+ *     security:
+ *       - BearerAuth: []
+ *       - GuestToken: []
+ *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: |
+ *           **Required**: 
+ *           - `Bearer <guest-token>` = Remove from guest cart
+ *           - `Bearer <jwt-token>` = Remove from user cart
+ *         example: "Bearer guest-uuid-token-here"
+ *     responses:
+ *       200:
+ *         description: ✅ Promo code removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Promo code removed successfully"
+ *                 cart:
+ *                   $ref: '#/components/schemas/Cart'
+ *       400:
+ *         description: ❌ No promo code applied to cart
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: ❌ Cart not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: ❌ Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.delete('/remove', guestOrAuth, ensureGuestToken, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    let guestToken: string | undefined;
+    let userId: string | undefined;
+    
+    if (req.user) {
+      userId = req.user.id;
+    } else {
+      guestToken = req.guestToken;
+    }
+    
+    const result = await promoService.removePromoFromCart(guestToken, userId);
     res.json(result);
   } catch (error) {
     next(error);
@@ -499,61 +594,6 @@ router.get('/:id', authenticateToken, requireAdmin, async (req, res, next) => {
 
 /**
  * @swagger
- * /api/promos/apply:
- *   post:
- *     summary: Apply promo to cart
- *     tags: [Promos]
- *     parameters:
- *       - in: header
- *         name: Authorization
- *         schema:
- *           type: string
- *         description: Bearer token for guest cart
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - promoCode
- *             properties:
- *               promoCode:
- *                 type: string
- *     responses:
- *       200:
- *         description: Promo applied successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 promo:
- *                   $ref: '#/components/schemas/Promo'
- *                 cartSubtotal:
- *                   type: number
- *                 discount:
- *                   type: number
- *                 total:
- *                   type: number
- */
-router.post('/apply', validate(applyPromoSchema), async (req, res, next) => {
-  try {
-    const guestToken = extractGuestToken(req.headers.authorization);
-    
-    if (!guestToken) {
-      throw createError('Guest token is required', 401);
-    }
-    
-    const result = await promoService.applyPromoToCart(guestToken, req.body.promoCode);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * @swagger
  * /api/promos/{id}:
  *   put:
  *     summary: 📝 Update promotion (Admin Only)
@@ -606,11 +646,11 @@ router.post('/apply', validate(applyPromoSchema), async (req, res, next) => {
  *               validFrom:
  *                 type: string
  *                 format: date-time
- *                 example: "2024-06-01T00:00:00Z"
+ *                 example: "2025-08-10T00:00:00Z"
  *               validTo:
  *                 type: string
  *                 format: date-time
- *                 example: "2024-09-30T23:59:59Z"
+ *                 example: "2025-09-25T00:00:00Z"
  *               status:
  *                 type: string
  *                 enum: [ACTIVE, INACTIVE, EXPIRED]
