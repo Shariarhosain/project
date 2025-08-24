@@ -343,9 +343,9 @@ router.post('/', authenticateToken, requireAdmin, (req, res, next) => {
       }
 
       const product = await productService.createProduct(productData);
-      res.status(201).json(product);
+      return res.status(201).json(product);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 });
@@ -850,12 +850,12 @@ router.post('/upload-image', authenticateToken, requireAdmin, (req, res, next) =
 
       const processedImages = await processImages(files, req);
 
-      res.json({
+      return res.json({
         message: 'Images uploaded successfully',
         images: processedImages
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 });

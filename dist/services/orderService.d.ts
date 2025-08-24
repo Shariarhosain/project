@@ -72,10 +72,15 @@ export declare class OrderService {
         orderNumber: string;
         total: number;
         customerInfo: import("@prisma/client/runtime/library").JsonValue;
+        transactionId: string | null;
+        paymentInfo: import("@prisma/client/runtime/library").JsonValue | null;
         guestToken: string | null;
         userId: string | null;
         promoId: string | null;
         discount: number;
+        paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
+        paymentMethod: string | null;
+        notes: string | null;
     }>;
     createOrderForUser(userId: string, data: CreateOrderInput): Promise<{
         items: ({
@@ -140,10 +145,15 @@ export declare class OrderService {
         orderNumber: string;
         total: number;
         customerInfo: import("@prisma/client/runtime/library").JsonValue;
+        transactionId: string | null;
+        paymentInfo: import("@prisma/client/runtime/library").JsonValue | null;
         guestToken: string | null;
         userId: string | null;
         promoId: string | null;
         discount: number;
+        paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
+        paymentMethod: string | null;
+        notes: string | null;
     }>;
     createOrder(userIdOrGuestToken: string, data: CreateOrderInput, isUser?: boolean): Promise<{
         items: ({
@@ -208,10 +218,15 @@ export declare class OrderService {
         orderNumber: string;
         total: number;
         customerInfo: import("@prisma/client/runtime/library").JsonValue;
+        transactionId: string | null;
+        paymentInfo: import("@prisma/client/runtime/library").JsonValue | null;
         guestToken: string | null;
         userId: string | null;
         promoId: string | null;
         discount: number;
+        paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
+        paymentMethod: string | null;
+        notes: string | null;
     }>;
     private processOrder;
     getOrders(params?: {
@@ -264,10 +279,15 @@ export declare class OrderService {
         orderNumber: string;
         total: number;
         customerInfo: import("@prisma/client/runtime/library").JsonValue;
+        transactionId: string | null;
+        paymentInfo: import("@prisma/client/runtime/library").JsonValue | null;
         guestToken: string | null;
         userId: string | null;
         promoId: string | null;
         discount: number;
+        paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
+        paymentMethod: string | null;
+        notes: string | null;
     }>;
     getOrderByNumber(orderNumber: string, userId?: string): Promise<{
         items: ({
@@ -312,10 +332,15 @@ export declare class OrderService {
         orderNumber: string;
         total: number;
         customerInfo: import("@prisma/client/runtime/library").JsonValue;
+        transactionId: string | null;
+        paymentInfo: import("@prisma/client/runtime/library").JsonValue | null;
         guestToken: string | null;
         userId: string | null;
         promoId: string | null;
         discount: number;
+        paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
+        paymentMethod: string | null;
+        notes: string | null;
     }>;
     updateOrderStatus(id: string, status: string, notes?: string): Promise<{
         items: ({
@@ -380,10 +405,15 @@ export declare class OrderService {
         orderNumber: string;
         total: number;
         customerInfo: import("@prisma/client/runtime/library").JsonValue;
+        transactionId: string | null;
+        paymentInfo: import("@prisma/client/runtime/library").JsonValue | null;
         guestToken: string | null;
         userId: string | null;
         promoId: string | null;
         discount: number;
+        paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
+        paymentMethod: string | null;
+        notes: string | null;
     }>;
     private generateOrderNumber;
     private createOrderWithoutTransaction;

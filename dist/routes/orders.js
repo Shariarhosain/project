@@ -56,6 +56,16 @@ router.get('/number/:orderNumber', auth_1.optionalAuth, async (req, res, next) =
         next(error);
     }
 });
+router.get('/analytics', auth_1.authenticateToken, auth_1.requireAdmin, async (req, res, next) => {
+    try {
+        const { startDate, endDate } = req.query;
+        const analytics = await orderService_1.default.getOrderAnalytics(startDate, endDate);
+        res.json(analytics);
+    }
+    catch (error) {
+        next(error);
+    }
+});
 router.get('/:id', auth_1.authenticateToken, auth_1.requireUser, async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -73,34 +83,6 @@ router.put('/:id/status', auth_1.authenticateToken, auth_1.requireAdmin, async (
         const { status, notes } = req.body;
         const order = await orderService_1.default.updateOrderStatus(id, status, notes);
         res.json(order);
-    }
-    catch (error) {
-        next(error);
-    }
-});
-router.get('/:id', async (req, res, next) => {
-    try {
-        const order = await orderService_1.default.getOrderById(req.params.id);
-        res.json(order);
-    }
-    catch (error) {
-        next(error);
-    }
-});
-router.get('/number/:orderNumber', async (req, res, next) => {
-    try {
-        const order = await orderService_1.default.getOrderByNumber(req.params.orderNumber);
-        res.json(order);
-    }
-    catch (error) {
-        next(error);
-    }
-});
-router.get('/analytics', auth_1.authenticateToken, auth_1.requireAdmin, async (req, res, next) => {
-    try {
-        const { startDate, endDate } = req.query;
-        const analytics = await orderService_1.default.getOrderAnalytics(startDate, endDate);
-        res.json(analytics);
     }
     catch (error) {
         next(error);

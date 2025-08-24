@@ -30,7 +30,7 @@ exports.swaggerOptions = {
                 description: 'Development server',
             },
             {
-                url: `hhttps://project-production-75d9.up.railway.app`,
+                url: 'https://project-production-75d9.up.railway.app/',
                 description: 'Production server',
             }
         ],

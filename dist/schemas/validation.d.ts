@@ -296,6 +296,28 @@ export declare const createOrderSchema: z.ZodObject<{
             };
             phone?: string | undefined;
         }>;
+        paymentInfo: z.ZodOptional<z.ZodObject<{
+            method: z.ZodEnum<["credit_card", "debit_card", "paypal", "stripe", "apple_pay", "google_pay", "bank_transfer", "cash_on_delivery"]>;
+            transactionId: z.ZodString;
+            cardLastFour: z.ZodOptional<z.ZodString>;
+            cardBrand: z.ZodOptional<z.ZodString>;
+            paymentGateway: z.ZodOptional<z.ZodString>;
+            gatewayResponse: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
+        }, "strip", z.ZodTypeAny, {
+            method: "credit_card" | "debit_card" | "paypal" | "stripe" | "apple_pay" | "google_pay" | "bank_transfer" | "cash_on_delivery";
+            transactionId: string;
+            cardLastFour?: string | undefined;
+            cardBrand?: string | undefined;
+            paymentGateway?: string | undefined;
+            gatewayResponse?: Record<string, any> | undefined;
+        }, {
+            method: "credit_card" | "debit_card" | "paypal" | "stripe" | "apple_pay" | "google_pay" | "bank_transfer" | "cash_on_delivery";
+            transactionId: string;
+            cardLastFour?: string | undefined;
+            cardBrand?: string | undefined;
+            paymentGateway?: string | undefined;
+            gatewayResponse?: Record<string, any> | undefined;
+        }>>;
         promoCode: z.ZodOptional<z.ZodString>;
         createAccount: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
         password: z.ZodOptional<z.ZodString>;
@@ -315,6 +337,14 @@ export declare const createOrderSchema: z.ZodObject<{
         createAccount: boolean;
         password?: string | undefined;
         promoCode?: string | undefined;
+        paymentInfo?: {
+            method: "credit_card" | "debit_card" | "paypal" | "stripe" | "apple_pay" | "google_pay" | "bank_transfer" | "cash_on_delivery";
+            transactionId: string;
+            cardLastFour?: string | undefined;
+            cardBrand?: string | undefined;
+            paymentGateway?: string | undefined;
+            gatewayResponse?: Record<string, any> | undefined;
+        } | undefined;
     }, {
         customerInfo: {
             email: string;
@@ -330,6 +360,14 @@ export declare const createOrderSchema: z.ZodObject<{
         };
         password?: string | undefined;
         promoCode?: string | undefined;
+        paymentInfo?: {
+            method: "credit_card" | "debit_card" | "paypal" | "stripe" | "apple_pay" | "google_pay" | "bank_transfer" | "cash_on_delivery";
+            transactionId: string;
+            cardLastFour?: string | undefined;
+            cardBrand?: string | undefined;
+            paymentGateway?: string | undefined;
+            gatewayResponse?: Record<string, any> | undefined;
+        } | undefined;
         createAccount?: boolean | undefined;
     }>, {
         customerInfo: {
@@ -347,6 +385,14 @@ export declare const createOrderSchema: z.ZodObject<{
         createAccount: boolean;
         password?: string | undefined;
         promoCode?: string | undefined;
+        paymentInfo?: {
+            method: "credit_card" | "debit_card" | "paypal" | "stripe" | "apple_pay" | "google_pay" | "bank_transfer" | "cash_on_delivery";
+            transactionId: string;
+            cardLastFour?: string | undefined;
+            cardBrand?: string | undefined;
+            paymentGateway?: string | undefined;
+            gatewayResponse?: Record<string, any> | undefined;
+        } | undefined;
     }, {
         customerInfo: {
             email: string;
@@ -362,6 +408,14 @@ export declare const createOrderSchema: z.ZodObject<{
         };
         password?: string | undefined;
         promoCode?: string | undefined;
+        paymentInfo?: {
+            method: "credit_card" | "debit_card" | "paypal" | "stripe" | "apple_pay" | "google_pay" | "bank_transfer" | "cash_on_delivery";
+            transactionId: string;
+            cardLastFour?: string | undefined;
+            cardBrand?: string | undefined;
+            paymentGateway?: string | undefined;
+            gatewayResponse?: Record<string, any> | undefined;
+        } | undefined;
         createAccount?: boolean | undefined;
     }>;
 }, "strip", z.ZodTypeAny, {
@@ -381,6 +435,14 @@ export declare const createOrderSchema: z.ZodObject<{
         createAccount: boolean;
         password?: string | undefined;
         promoCode?: string | undefined;
+        paymentInfo?: {
+            method: "credit_card" | "debit_card" | "paypal" | "stripe" | "apple_pay" | "google_pay" | "bank_transfer" | "cash_on_delivery";
+            transactionId: string;
+            cardLastFour?: string | undefined;
+            cardBrand?: string | undefined;
+            paymentGateway?: string | undefined;
+            gatewayResponse?: Record<string, any> | undefined;
+        } | undefined;
     };
 }, {
     body: {
@@ -398,6 +460,14 @@ export declare const createOrderSchema: z.ZodObject<{
         };
         password?: string | undefined;
         promoCode?: string | undefined;
+        paymentInfo?: {
+            method: "credit_card" | "debit_card" | "paypal" | "stripe" | "apple_pay" | "google_pay" | "bank_transfer" | "cash_on_delivery";
+            transactionId: string;
+            cardLastFour?: string | undefined;
+            cardBrand?: string | undefined;
+            paymentGateway?: string | undefined;
+            gatewayResponse?: Record<string, any> | undefined;
+        } | undefined;
         createAccount?: boolean | undefined;
     };
 }>;

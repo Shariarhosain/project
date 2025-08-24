@@ -87,7 +87,9 @@ class OrderService {
         return await this.processOrder(cart, data, isUser ? userIdOrGuestToken : undefined);
     }
     async processOrder(cart, data, userId) {
-        const { customerInfo, promoCode } = data;
+        const { customerInfo, paymentInfo, promoCode } = data;
+        if (paymentInfo) {
+        }
         for (const item of cart.items) {
             if (item.variant.inventory < item.quantity) {
                 throw (0, errorHandler_1.createError)(`Insufficient inventory for ${item.product.name} - ${item.variant.name}. Only ${item.variant.inventory} available.`, 400);
@@ -111,7 +113,7 @@ class OrderService {
         }
         const total = subtotal - discount;
         const orderNumber = await this.generateOrderNumber();
-        const order = await this.createOrderWithoutTransaction(cart, subtotal, discount, total, promo, promoId, promoCode, customerInfo, orderNumber, userId);
+        const order = await this.createOrderWithoutTransaction(cart, subtotal, discount, total, promo, promoId, promoCode, customerInfo, paymentInfo, orderNumber, userId);
         return order;
     }
     async getOrders(params = {}) {
@@ -337,7 +339,7 @@ class OrderService {
         const sequence = (todayOrderCount + 1).toString().padStart(4, '0');
         return `ORD${year}${month}${day}${sequence}`;
     }
-    async createOrderWithoutTransaction(cart, subtotal, discount, total, promo, promoId, promoCode, customerInfo, orderNumber, userId) {
+    async createOrderWithoutTransaction(cart, subtotal, discount, total, promo, promoId, promoCode, customerInfo, paymentInfo, orderNumber, userId) {
         const newOrder = await prisma_1.prisma.order.create({
             data: {
                 orderNumber,
@@ -349,6 +351,10 @@ class OrderService {
                 promoId,
                 promoCode,
                 customerInfo,
+                paymentInfo: paymentInfo || null,
+                transactionId: paymentInfo?.transactionId || null,
+                paymentMethod: paymentInfo?.method || null,
+                paymentStatus: paymentInfo ? 'COMPLETED' : 'PENDING',
                 items: {
                     create: cart.items.map((item) => ({
                         productId: item.productId,
