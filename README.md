@@ -116,116 +116,242 @@ graph TD
 
 ### 👑 **Admin User Flow** (Complete System Management)
 
+#### **Admin Authentication Flow**
 ```mermaid
 graph TD
     A[👑 Admin User] --> B[🔐 Admin Login]
     B --> B1[POST /api/users/login]
     B1 --> B2[🛡️ Verify Admin Role]
     B2 --> C[🏢 Admin Dashboard]
-    
-    C --> D{Management Area}
-    
-    D -->|Products| E[📦 Product Management]
-    D -->|Orders| F[📋 Order Management]  
-    D -->|Users| G[👥 User Management]
-    D -->|Promos| H[🎫 Promotion Management]
-    D -->|Analytics| I[📊 Reports & Analytics]
-    
-    E --> E1{Product Actions}
-    E1 -->|Create| E2[POST /api/products]
-    E1 -->|Update| E3[PUT /api/products/:id]
-    E1 -->|Delete| E4[DELETE /api/products/:id]
-    E1 -->|View All| E5[GET /api/products?includeInactive=true]
-    E2 --> E6[🎨 Manage Variants]
-    E6 --> E7[📊 Update Inventory]
-    
-    F --> F1{Order Actions}
-    F1 -->|View All| F2[GET /api/orders]
-    F1 -->|Update Status| F3[PATCH /api/orders/:id/status]
-    F1 -->|Fulfill| F4[📦 Process Shipment]
-    F2 --> F5[🔍 Filter & Search Orders]
-    F3 --> F6[📧 Notify Customer]
-    
-    G --> G1{User Actions}
-    G1 -->|View All| G2[GET /api/users]
-    G1 -->|Create| G3[POST /api/users]
-    G1 -->|Update| G4[PUT /api/users/:id]
-    G1 -->|Delete| G5[DELETE /api/users/:id]
-    G2 --> G6[👥 Manage Roles & Permissions]
-    
-    H --> H1{Promotion Actions}
-    H1 -->|Create| H2[POST /api/promos]
-    H1 -->|Update| H3[PUT /api/promos/:id]
-    H1 -->|Delete| H4[DELETE /api/promos/:id]
-    H1 -->|Analytics| H5[📈 Track Usage]
-    H2 --> H6[🎯 Set Conditions & Limits]
-    
-    I --> I1[📊 Sales Reports]
-    I1 --> I2[👥 User Statistics]
-    I2 --> I3[📦 Inventory Levels]
-    I3 --> I4[💰 Revenue Analytics]
-    I4 --> I5[🎫 Promotion Performance]
+    C --> D{Choose Management Area}
     
     style A fill:#fce4ec
     style B2 fill:#ffebee
     style C fill:#f3e5f5
-    style E7 fill:#e8f5e8
-    style F6 fill:#fff3e0
-    style G6 fill:#e3f2fd
-    style H6 fill:#fff9c4
-    style I5 fill:#e0f2f1
 ```
 
-### 🔄 **Complete System Integration Flow**
-
+#### **Product Management Flow**
 ```mermaid
-graph TB
-    subgraph "🎭 Guest Layer"
-        A1[Browse Products] --> A2[Add to Cart]
-        A2 --> A3[Apply Promos]
-        A3 --> A4[Checkout]
-    end
+graph TD
+    A[📦 Product Management] --> B{Product Action}
     
-    subgraph "👤 User Layer"  
-        B1[Login/Register] --> B2[Persistent Cart]
-        B2 --> B3[Order History]
-        B3 --> B4[Account Management]
-    end
+    B -->|Create New| C[➕ Create Product]
+    B -->|Update Existing| D[✏️ Update Product]
+    B -->|Remove| E[🗑️ Delete Product]
+    B -->|View All| F[�️ View Products]
     
-    subgraph "👑 Admin Layer"
-        C1[Product Management] --> C2[Order Processing]
-        C2 --> C3[User Management]
-        C3 --> C4[Analytics]
-    end
+    C --> C1[POST /api/products]
+    C1 --> C2[🎨 Add Variants]
+    C2 --> C3[📊 Set Inventory]
     
-    subgraph "🗄️ Database Layer"
-        D1[(Products)] --> D2[(Carts)]
-        D2 --> D3[(Orders)]
-        D3 --> D4[(Users)]
-        D4 --> D5[(Promos)]
-    end
+    D --> D1[PUT /api/products/:id]
+    D1 --> D2[💰 Update Pricing]
+    D2 --> D3[📝 Edit Description]
     
-    subgraph "🔒 Security Layer"
-        E1[Guest Tokens] --> E2[JWT Auth]
-        E2 --> E3[Role-based Access]
-        E3 --> E4[Input Validation]
-    end
+    E --> E1[DELETE /api/products/:id]
+    E1 --> E2[⚠️ Confirm Deletion]
     
-    A4 --> D3
-    B2 --> D2
-    C1 --> D1
-    C2 --> D3
-    C3 --> D4
+    F --> F1[GET /api/products?includeInactive=true]
+    F1 --> F2[📋 View All Products]
     
-    E1 --> A2
-    E2 --> B1
-    E3 --> C1
+    style A fill:#e8f5e8
+    style C3 fill:#fff3e0
+    style D3 fill:#e3f2fd
+```
+
+#### **Order Management Flow**
+```mermaid
+graph TD
+    A[📋 Order Management] --> B{Order Action}
     
-    style A1 fill:#e1f5fe
-    style B1 fill:#e8eaf6
-    style C1 fill:#fce4ec
-    style D1 fill:#f1f8e9
-    style E1 fill:#fff3e0
+    B -->|View Orders| C[👁️ View All Orders]
+    B -->|Process Order| D[⚙️ Update Status]
+    B -->|Search| E[🔍 Filter Orders]
+    
+    C --> C1[GET /api/orders]
+    C1 --> C2[📊 See All Orders]
+    C2 --> C3[📈 Order Analytics]
+    
+    D --> D1[PATCH /api/orders/:id/status]
+    D1 --> D2{New Status}
+    
+    D2 -->|Processing| D3[⏳ Processing]
+    D2 -->|Shipped| D4[📦 Shipped]
+    D2 -->|Delivered| D5[✅ Delivered]
+    
+    D3 --> D6[� Notify Customer]
+    D4 --> D7[🚚 Add Tracking Number]
+    D5 --> D8[🎉 Order Complete]
+    
+    E --> E1[📅 Filter by Date]
+    E1 --> E2[� Filter by Amount]
+    E2 --> E3[📍 Filter by Status]
+    
+    style A fill:#fff3e0
+    style D6 fill:#e8f5e8
+    style D8 fill:#e0f2f1
+```
+
+#### **User Management Flow**
+```mermaid
+graph TD
+    A[👥 User Management] --> B{User Action}
+    
+    B -->|View Users| C[👁️ View All Users]
+    B -->|Create User| D[➕ Create New User]
+    B -->|Update User| E[✏️ Update User]
+    B -->|Delete User| F[🗑️ Delete User]
+    
+    C --> C1[GET /api/users]
+    C1 --> C2[📋 User List]
+    C2 --> C3[🔍 Search Users]
+    
+    D --> D1[POST /api/users]
+    D1 --> D2[👤 Set Role]
+    D2 --> D3[🔑 Generate Password]
+    
+    E --> E1[PUT /api/users/:id]
+    E1 --> E2[📝 Update Profile]
+    E2 --> E3[🛡️ Change Permissions]
+    
+    F --> F1[DELETE /api/users/:id]
+    F1 --> F2[⚠️ Confirm Deletion]
+    F2 --> F3[�️ Archive User Data]
+    
+    style A fill:#e3f2fd
+    style D3 fill:#fff3e0
+    style F3 fill:#ffebee
+```
+
+#### **Promotion Management Flow**
+```mermaid
+graph TD
+    A[🎫 Promotion Management] --> B{Promo Action}
+    
+    B -->|Create Promo| C[➕ Create Promotion]
+    B -->|Update Promo| D[✏️ Update Promotion]
+    B -->|Delete Promo| E[🗑️ Delete Promotion]
+    B -->|View Analytics| F[� Promo Analytics]
+    
+    C --> C1[POST /api/promos]
+    C1 --> C2[🎯 Set Discount Type]
+    C2 --> C3[💰 Set Conditions]
+    C3 --> C4[📅 Set Expiry Date]
+    
+    D --> D1[PUT /api/promos/:id]
+    D1 --> D2[� Update Terms]
+    D2 --> D3[� Change Status]
+    
+    E --> E1[DELETE /api/promos/:id]
+    E1 --> E2[⚠️ Confirm Deletion]
+    
+    F --> F1[📈 Usage Statistics]
+    F1 --> F2[💵 Revenue Impact]
+    F2 --> F3[👥 User Engagement]
+    
+    style A fill:#fff9c4
+    style C4 fill:#e8f5e8
+    style F3 fill:#e0f2f1
+```
+
+### 🔄 **System Integration Flows**
+
+#### **Database Layer Integration**
+```mermaid
+graph TD
+    A[🗄️ Database Layer] --> B[Core Entities]
+    
+    B --> C[(👤 Users)]
+    B --> D[(📦 Products)]
+    B --> E[(🛒 Carts)]
+    B --> F[(📋 Orders)]
+    B --> G[(🎫 Promos)]
+    
+    C --> C1[User Authentication]
+    C --> C2[Role Management]
+    
+    D --> D1[Product Variants]
+    D --> D2[Inventory Tracking]
+    
+    E --> E1[Guest Carts]
+    E --> E2[User Carts]
+    
+    F --> F1[Order Items]
+    F --> F2[Order Status]
+    
+    G --> G1[Discount Rules]
+    G --> G2[Usage Tracking]
+    
+    style A fill:#f1f8e9
+    style C fill:#e3f2fd
+    style D fill:#e8f5e8
+    style E fill:#fff3e0
+    style F fill:#e0f2f1
+    style G fill:#fff9c4
+```
+
+#### **Security Layer Integration**
+```mermaid
+graph TD
+    A[🔒 Security Layer] --> B[Authentication Types]
+    
+    B --> C[🎭 Guest Tokens]
+    B --> D[🔑 JWT Tokens]
+    B --> E[👑 Admin Access]
+    
+    C --> C1[UUID Generation]
+    C1 --> C2[Cart Session Management]
+    C2 --> C3[Token Expiration]
+    
+    D --> D1[User Login]
+    D1 --> D2[Token Validation]
+    D2 --> D3[Role Verification]
+    
+    E --> E1[Admin Login]
+    E1 --> E2[Permission Checks]
+    E2 --> E3[Resource Access Control]
+    
+    F[🛡️ Input Validation] --> F1[Zod Schemas]
+    F1 --> F2[Request Sanitization]
+    F2 --> F3[Error Handling]
+    
+    style A fill:#fff3e0
+    style C fill:#e1f5fe
+    style D fill:#e8eaf6
+    style E fill:#fce4ec
+    style F fill:#f3e5f5
+```
+
+#### **API Layer Integration**
+```mermaid
+graph TD
+    A[🌐 API Layer] --> B[Public Endpoints]
+    A --> C[Protected Endpoints]
+    A --> D[Admin Endpoints]
+    
+    B --> B1[📦 GET /products]
+    B --> B2[🎫 GET /promos]
+    B --> B3[🛒 GET /carts]
+    
+    C --> C1[🔐 User Auth Required]
+    C1 --> C2[📋 GET /orders]
+    C1 --> C3[👤 GET /users/me]
+    
+    D --> D1[👑 Admin Auth Required]
+    D1 --> D2[📦 POST /products]
+    D1 --> D3[👥 GET /users]
+    D1 --> D4[📋 PATCH /orders/:id/status]
+    
+    E[🔄 Middleware] --> E1[🔒 Authentication]
+    E1 --> E2[✅ Validation]
+    E2 --> E3[📝 Logging]
+    E3 --> E4[❌ Error Handling]
+    
+    style A fill:#e3f2fd
+    style B fill:#e8f5e8
+    style C fill:#fff3e0
+    style D fill:#fce4ec
+    style E fill:#f1f8e9
 ```
 
 ## 🎯 System Overview
